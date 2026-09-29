@@ -376,6 +376,100 @@
     .ready-copy strong{font-size:10px}
   }
 
+
+  /* --- V7: rewarding micro-interactions --- */
+  .fx-layer{
+    position:fixed;inset:0;z-index:250;pointer-events:none;overflow:hidden
+  }
+  .confetti-piece{
+    position:absolute;left:50%;top:38%;
+    width:9px;height:14px;border-radius:2px;
+    opacity:0;will-change:transform,opacity;
+    animation:confettiFall var(--dur,1100ms) cubic-bezier(.16,.72,.35,1) forwards;
+  }
+  .confetti-piece.gold{
+    border-radius:50%;
+    box-shadow:0 0 10px rgba(250,204,21,.65);
+  }
+  @keyframes confettiFall{
+    0%{
+      opacity:0;
+      transform:translate3d(0,0,0) rotate(0deg) scale(.7)
+    }
+    10%{opacity:1}
+    100%{
+      opacity:0;
+      transform:translate3d(var(--dx),var(--dy),0) rotate(var(--rot)) scale(1)
+    }
+  }
+
+  .score-celebration{
+    position:fixed;left:50%;top:22%;z-index:260;
+    transform:translate(-50%,-50%) scale(.82);
+    opacity:0;pointer-events:none;
+    padding:11px 16px;border-radius:999px;
+    font-weight:950;font-size:13px;letter-spacing:.08em;
+    color:#312e81;background:rgba(238,242,255,.96);
+    border:1px solid #c7d2fe;
+    box-shadow:0 18px 55px rgba(79,70,229,.25);
+    animation:scorePop 1350ms cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  .score-celebration.gold{
+    color:#713f12;
+    background:linear-gradient(135deg,#fff7cc,#fde68a,#fff9db);
+    border-color:#facc15;
+    box-shadow:0 18px 65px rgba(234,179,8,.36),0 0 35px rgba(250,204,21,.22);
+  }
+  @keyframes scorePop{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.72)}
+    18%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
+    35%{transform:translate(-50%,-50%) scale(1)}
+    78%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-64%) scale(.98)}
+  }
+
+  .gold-wash{
+    position:fixed;inset:0;z-index:245;pointer-events:none;
+    background:radial-gradient(circle at 50% 35%,rgba(253,224,71,.24),transparent 48%);
+    opacity:0;animation:goldWash 900ms ease-out forwards;
+  }
+  @keyframes goldWash{
+    0%{opacity:0}
+    22%{opacity:1}
+    100%{opacity:0}
+  }
+
+  .drop-ring{
+    position:fixed;z-index:240;pointer-events:none;
+    width:18px;height:18px;border-radius:50%;
+    border:3px solid #22c55e;
+    transform:translate(-50%,-50%) scale(.25);
+    opacity:.9;
+    animation:dropRing .45s ease-out forwards
+  }
+  .drop-ring.bad{border-color:#ef4444}
+  @keyframes dropRing{
+    to{transform:translate(-50%,-50%) scale(3.2);opacity:0}
+  }
+
+  #furnitureLayer > g{
+    transition:filter .12s ease,opacity .12s ease
+  }
+  #furnitureLayer > g.drag-lift{
+    filter:drop-shadow(0 11px 8px rgba(15,23,42,.28));
+    opacity:.96
+  }
+  #furnitureLayer > g.drag-lift text{
+    font-weight:950
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .confetti-piece,.score-celebration,.gold-wash,.drop-ring{
+      animation-duration:1ms!important
+    }
+    #furnitureLayer > g{transition:none}
+  }
+
 </style>
 </head>
 <body>
@@ -946,6 +1040,8 @@ const db = getFirestore(firebaseApp);
       };
       g.setPointerCapture(e.pointerId);
       g.style.cursor='grabbing';
+      g.classList.add('drag-lift');
+      haptic(8);
       renderSelected();
     });
 
@@ -970,8 +1066,17 @@ const db = getFirestore(firebaseApp);
     g.addEventListener('pointerup',e=>{
       if(drag && drag.id===item.id){
         try{g.releasePointerCapture(e.pointerId)}catch(_){}
+        const wasMoved=drag.moved;
         drag=null;
         g.style.cursor='grab';
+        g.classList.remove('drag-lift');
+
+        const placedStatus=statusFor(item);
+        if(wasMoved){
+          dropPulse(e.clientX,e.clientY,placedStatus.ok);
+          haptic(placedStatus.ok?10:[8,30,8]);
+        }
+
         save();
         renderAll();
       }
@@ -981,6 +1086,7 @@ const db = getFirestore(firebaseApp);
     g.addEventListener('pointercancel',e=>{
       drag=null;
       g.style.cursor='grab';
+      g.classList.remove('drag-lift');
       save();
       renderAll();
       e.stopPropagation();
@@ -1493,6 +1599,89 @@ const db = getFirestore(firebaseApp);
     };
   }
 
+
+  // ---------- Rewarding feedback ----------
+  function reducedMotion(){
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function haptic(pattern=12){
+    try{
+      if(navigator.vibrate) navigator.vibrate(pattern);
+    }catch(_){}
+  }
+
+  function dropPulse(clientX,clientY,ok=true){
+    if(reducedMotion()) return;
+    const ring=document.createElement('div');
+    ring.className='drop-ring'+(ok?'':' bad');
+    ring.style.left=clientX+'px';
+    ring.style.top=clientY+'px';
+    document.body.appendChild(ring);
+    setTimeout(()=>ring.remove(),520);
+  }
+
+  function scoreBanner(score,gold=false){
+    const el=document.createElement('div');
+    el.className='score-celebration'+(gold?' gold':'');
+    el.textContent=score===100 && !gold ? '✓ LAYOUT READY' : (gold ? `✦ GOLD LAYOUT · ${score}/100 ✦` : `✨ GREAT LAYOUT · ${score}/100`);
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1500);
+  }
+
+  function confettiBurst({gold=false,count=34}={}){
+    if(reducedMotion()) return;
+    const layer=document.getElementById('fxLayer');
+    const colors=gold
+      ? ['#facc15','#fde68a','#eab308','#fff7cc','#f59e0b']
+      : ['#4f46e5','#8b5cf6','#22c55e','#38bdf8','#f43f5e','#f59e0b'];
+
+    for(let i=0;i<count;i++){
+      const p=document.createElement('span');
+      p.className='confetti-piece'+(gold?' gold':'');
+      p.style.background=colors[i%colors.length];
+
+      const angle=(-155 + Math.random()*130) * Math.PI/180;
+      const distance=(gold?150:120)+Math.random()*(gold?260:210);
+      const dx=Math.cos(angle)*distance;
+      const dy=Math.sin(angle)*distance + 250 + Math.random()*180;
+
+      p.style.setProperty('--dx',`${dx}px`);
+      p.style.setProperty('--dy',`${dy}px`);
+      p.style.setProperty('--rot',`${Math.round((Math.random()-.5)*1080)}deg`);
+      p.style.setProperty('--dur',`${850+Math.random()*650}ms`);
+      p.style.left=`${43+Math.random()*14}%`;
+      p.style.top=`${28+Math.random()*16}%`;
+
+      if(!gold && Math.random()>.5){
+        p.style.width='7px';
+        p.style.height='7px';
+        p.style.borderRadius='50%';
+      }
+
+      layer.appendChild(p);
+      setTimeout(()=>p.remove(),1700);
+    }
+  }
+
+  function celebrateRating(score){
+    if(score<85) return;
+
+    const gold=score>=90;
+    confettiBurst({gold,count:gold?54:32});
+    scoreBanner(score,gold);
+
+    if(gold && !reducedMotion()){
+      const wash=document.createElement('div');
+      wash.className='gold-wash';
+      document.body.appendChild(wash);
+      setTimeout(()=>wash.remove(),1000);
+      haptic([20,45,28]);
+    }else{
+      haptic(18);
+    }
+  }
+
   function showAutoReview(review){
     const card=document.getElementById('coachCard');
     card.classList.add('show');
@@ -1510,6 +1699,7 @@ const db = getFirestore(firebaseApp);
     if(!items.length){toast('Setze zuerst Items auf die Map');return null;}
     const review=buildAutoReview(cloneItems());
     showAutoReview(review);
+    celebrateRating(review.score);
     toast(`ROOM COACH: ${review.score}/100`);
     return review;
   }
@@ -1539,6 +1729,8 @@ const db = getFirestore(firebaseApp);
       ready:allUsed && valid
     };
   }
+
+  let lastReadyState=false;
 
   function updateReadyUI(){
     const r=buildReadiness();
@@ -1590,6 +1782,17 @@ const db = getFirestore(firebaseApp);
       publish.disabled=true;
       publish.textContent=`🔒 ${r.placed}/${r.total} Items`;
     }
+
+    if(r.ready && !lastReadyState){
+      setTimeout(()=>{
+        if(buildReadiness().ready){
+          confettiBurst({gold:false,count:18});
+          scoreBanner(100,false);
+          haptic([12,28,12]);
+        }
+      },120);
+    }
+    lastReadyState=r.ready;
   }
 
   function updateHUD(){
@@ -1708,6 +1911,7 @@ const db = getFirestore(firebaseApp);
     const title=(layoutNameEl.value||'My Layout').trim().slice(0,40)||'My Layout';
     const review=buildAutoReview(cloneItems());
     showAutoReview(review);
+    celebrateRating(review.score);
 
     try{
       await addDoc(collection(db,'layouts'),{
@@ -1962,5 +2166,7 @@ const db = getFirestore(firebaseApp);
   });
 })();
 </script>
+
+<div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
 </body>
 </html>
