@@ -492,6 +492,64 @@
     color:#fff!important;
   }
 
+
+  /* --- V10: detail preview modal --- */
+  .preview-modal{
+    position:fixed; inset:0; z-index:220;
+    display:none; align-items:center; justify-content:center;
+    background:rgba(15,23,42,.72); backdrop-filter:blur(8px);
+    padding:18px;
+  }
+  .preview-modal.open{display:flex}
+  .preview-panel{
+    width:min(1120px,100%); max-height:min(92vh,900px);
+    background:#fff; border-radius:22px; overflow:hidden;
+    box-shadow:0 24px 80px rgba(15,23,42,.35);
+    display:flex; flex-direction:column;
+  }
+  .preview-modal-head{
+    display:flex; align-items:center; gap:10px; justify-content:space-between;
+    padding:14px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc;
+  }
+  .preview-modal-title{
+    font-size:18px; font-weight:900; color:#111827;
+  }
+  .preview-modal-sub{
+    font-size:12px; color:#64748b; margin-top:2px;
+  }
+  .preview-modal-actions{display:flex; gap:8px; flex-wrap:wrap}
+  .preview-modal-actions button{min-width:42px}
+  .preview-canvas-wrap{
+    flex:1; min-height:340px; overflow:auto; background:#eef2f7;
+    padding:18px;
+  }
+  .preview-canvas{
+    display:inline-block; transform-origin:top left;
+    transition:transform .16s ease;
+  }
+  .preview-canvas svg{
+    width:980px; height:auto; display:block;
+    background:#fff; border-radius:20px; box-shadow:0 6px 24px rgba(15,23,42,.1)
+  }
+  .leader-card-click{
+    cursor:pointer;
+  }
+  .leader-card-click:hover{
+    transform:translateY(-1px);
+  }
+  .leader-open-btn{
+    width:100%; margin-top:8px;
+  }
+  @media(max-width:980px){
+    .preview-modal{padding:10px}
+    .preview-panel{max-height:95vh; border-radius:18px}
+    .preview-modal-head{padding:10px 12px; align-items:flex-start}
+    .preview-modal-title{font-size:15px}
+    .preview-modal-sub{font-size:11px}
+    .preview-canvas-wrap{padding:12px}
+    .preview-canvas svg{width:860px}
+  }
+
 </style>
 </head>
 <body>
@@ -822,8 +880,8 @@ const db = getFirestore(firebaseApp);
     desk270: {name:'Tisch groß', gameClass:'XL', role:'Arbeitsfläche', count:1, w:270, d:60, h:80, kind:'rect', asset:'assets/table_large.png'},
     table90: {name:'Tisch klein', gameClass:'M', role:'Ablage', count:1, w:90, d:55, h:45, kind:'rect', asset:'assets/table_small.png'},
     floorlamp: {name:'Stehlampe', gameClass:'S', role:'Licht', count:2, w:30, d:30, h:140, kind:'circle', asset:'assets/floor_lamp.png'},
-    lsofa: {name:'L-Couch', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape', asset:'assets/l_couch.png', renderD:145},
-    sofabed: {name:'Ausklappcouch', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed', asset:'assets/sofabed_closed.png', assetOpen:'assets/sofabed_open.png', renderDOpen:185},
+    lsofa: {name:'L-Couch', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape', asset:'assets/l_couch.png', assetBox:{w:217,d:145,dx:0,dy:32.5}},
+    sofabed: {name:'Ausklappcouch', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed', asset:'assets/sofabed_closed.png', assetOpen:'assets/sofabed_open.png', assetBox:{w:190,d:120,dx:0,dy:0}, assetBoxOpen:{w:190,d:185,dx:0,dy:32.5}},
     rolltable: {name:'Rolltisch', gameClass:'S', role:'Ablage', count:1, w:40, d:40, h:35, kind:'rect', asset:'assets/roll_table.png'},
     jibomat: {name:'Jibomat', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect', asset:'assets/jibomat.png'}
   };
@@ -837,8 +895,8 @@ const db = getFirestore(firebaseApp);
 
 
   function itemRenderSize(item,def){
-    if(def.kind==='lshape') return {w:def.w,d:def.renderD||145};
-    if(def.kind==='sofabed' && item.foldedOut) return {w:def.w,d:def.renderDOpen||185};
+    if(def.kind==='lshape') return {w:def.w,d:(def.assetBox?.d||145)};
+    if(def.kind==='sofabed' && item.foldedOut) return {w:def.w,d:(def.assetBoxOpen?.d||185)};
     return {w:def.w,d:def.d};
   }
 
@@ -847,8 +905,16 @@ const db = getFirestore(firebaseApp);
     return def.asset || null;
   }
 
+  function itemAssetBox(item,def){
+    if(def.kind==='sofabed' && item.foldedOut && def.assetBoxOpen){
+      return def.assetBoxOpen;
+    }
+    return def.assetBox || {w:def.w,d:def.d,dx:0,dy:0};
+  }
+
   function itemLabelOffset(item,def){
-    return itemRenderSize(item,def).d/2 + 12;
+    const box=itemAssetBox(item,def);
+    return Math.max(itemRenderSize(item,def).d/2, (box.dy||0)+(box.d||def.d)/2) + 12;
   }
 
   function appendFootprintOverlays(g,item,def,status,selected){
@@ -868,26 +934,98 @@ const db = getFirestore(firebaseApp);
   }
 
   function appendItemVisual(g,item,def){
-    const {w,d} = itemRenderSize(item,def);
     const href = itemAsset(def,item);
 
     if(href){
+      const box=itemAssetBox(item,def);
+      const w=box.w||def.w, d=box.d||def.d, dx=box.dx||0, dy=box.dy||0;
       const img=document.createElementNS('http://www.w3.org/2000/svg','image');
       img.setAttribute('href',href);
-      img.setAttribute('x',-w/2);
-      img.setAttribute('y',-d/2);
+      img.setAttribute('x',(-w/2)+dx);
+      img.setAttribute('y',(-d/2)+dy);
       img.setAttribute('width',w);
       img.setAttribute('height',d);
       img.setAttribute('preserveAspectRatio','none');
       img.setAttribute('pointer-events','none');
       if(def.kind==='lshape' && item.mirrored){
-        img.setAttribute('transform','scale(-1 1)');
+        const tx = -2*dx;
+        img.setAttribute('transform',`translate(${tx} 0) scale(-1 1)`);
       }
       g.appendChild(img);
       return true;
     }
     return false;
   }
+
+  function previewItemMarkup(item){
+    const def=defs[item.type];
+    if(!def) return '';
+    const asset=itemAsset(def,item);
+    const box=itemAssetBox(item,def);
+    const w=box.w||def.w, d=box.d||def.d, dx=box.dx||0, dy=box.dy||0;
+    const outline=worldPolys(item).map(poly=>{
+      const pts=poly.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      return `<polygon points="${pts}" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.30)" stroke-width="1.25" stroke-linejoin="round"/>`;
+    }).join('');
+
+    if(!asset){
+      return outline;
+    }
+
+    const imageMarkup = (def.kind==='lshape' && item.mirrored)
+      ? `<image href="${asset}" x="${((-w/2)+dx).toFixed(1)}" y="${((-d/2)+dy).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none" transform="translate(${(-2*dx).toFixed(1)} 0) scale(-1 1)"/>`
+      : `<image href="${asset}" x="${((-w/2)+dx).toFixed(1)}" y="${((-d/2)+dy).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none"/>`;
+
+    return `${outline}<g transform="translate(${item.x} ${item.y}) rotate(${item.r})">${imageMarkup}</g>`;
+  }
+
+  function openLayoutPreview(entry){
+    currentLayoutPreview = entry;
+    currentLayoutZoom = 1;
+    document.getElementById('layoutPreviewTitle').textContent = entry?.title || 'Layout';
+    const likes = Number(entry?.score||0);
+    const auto = Number.isFinite(entry?.autoScore) ? ` · ✨ Auto ${entry.autoScore}/100` : '';
+    document.getElementById('layoutPreviewMeta').textContent = `♥ ${likes} Likes${auto}`;
+    renderStaticPreview(document.getElementById('layoutPreviewSvg'), entry?.items || []);
+    applyLayoutPreviewZoom();
+    const modal=document.getElementById('layoutPreviewModal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden','false');
+  }
+
+  function closeLayoutPreview(){
+    document.getElementById('layoutPreviewModal').classList.remove('open');
+    document.getElementById('layoutPreviewModal').setAttribute('aria-hidden','true');
+  }
+
+  function applyLayoutPreviewZoom(){
+    const canvas=document.getElementById('layoutPreviewCanvas');
+    canvas.style.transform=`scale(${currentLayoutZoom})`;
+  }
+
+  function previewZoomBy(mult){
+    currentLayoutZoom=Math.max(0.75,Math.min(3.2,currentLayoutZoom*mult));
+    applyLayoutPreviewZoom();
+  }
+
+  function previewZoomReset(){
+    currentLayoutZoom=1;
+    applyLayoutPreviewZoom();
+    const scroller=document.getElementById('layoutPreviewScroll');
+    scroller.scrollTo({left:0,top:0,behavior:'smooth'});
+  }
+
+  function initLayoutPreviewModal(){
+    document.getElementById('layoutPreviewCloseBtn').onclick=closeLayoutPreview;
+    document.getElementById('layoutZoomInBtn').onclick=()=>previewZoomBy(1.22);
+    document.getElementById('layoutZoomOutBtn').onclick=()=>previewZoomBy(1/1.22);
+    document.getElementById('layoutZoomResetBtn').onclick=previewZoomReset;
+    const modal=document.getElementById('layoutPreviewModal');
+    modal.addEventListener('click',e=>{ if(e.target===modal) closeLayoutPreview(); });
+  }
+
+  let currentLayoutPreview = null;
+  let currentLayoutZoom = 1;
 
   function previewItemMarkup(item){
     const def=defs[item.type];
@@ -2122,35 +2260,30 @@ const db = getFirestore(firebaseApp);
   }
 
   function renderLeaderboard(){
-    const box=document.getElementById('leaderboard');
-    const top=[...communityCache].sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0)).slice(0,3);
-    box.innerHTML='';
-    if(!top.length){
-      box.innerHTML='<div class="empty-deck" style="grid-column:1/-1"><div class="emoji">☁️</div><strong>Noch keine veröffentlichten Layouts</strong><div style="margin-top:5px">Veröffentliche das erste Layout über „Ins Voting“.</div></div>';
+    const box=document.getElementById('leaderGrid');
+    if(!communityCache.length){
+      box.innerHTML='<div class="empty-deck" style="grid-column:1/-1"><div class="emoji">📦</div><strong>Noch keine Layouts</strong><div style="margin-top:6px">Veröffentliche das erste Community-Layout.</div></div>';
       return;
     }
-    top.forEach((entry,idx)=>{
-      const card=document.createElement('div');card.className='leader-card';
-      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div></div>`;
-      box.appendChild(card);renderStaticPreview(card.querySelector('svg'),entry.items);
+    const ranked=[...communityCache].sort((a,b)=>(b.score||0)-(a.score||0)||(b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+    box.innerHTML='';
+    ranked.forEach((entry,idx)=>{
+      const card=document.createElement('article');
+      card.className='leader-card leader-card-click';
+      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div><button class="leader-open-btn">🔍 Größer ansehen</button></div>`;
+      renderStaticPreview(card.querySelector('svg'),entry.items);
+      card.addEventListener('click',e=>{
+        if(e.target.tagName==='BUTTON' || e.target.closest('.leader-open-btn')){
+          e.stopPropagation();
+        }
+        openLayoutPreview(entry);
+      });
+      card.querySelector('.leader-open-btn').addEventListener('click',e=>{
+        e.stopPropagation();
+        openLayoutPreview(entry);
+      });
+      box.appendChild(card);
     });
-  }
-
-  function setView(view){
-    document.body.dataset.view=view;
-    layoutView.style.display=view==='layout'?'':'none';
-    swipeView.style.display=view==='swipe'?'block':'none';
-    leaderView.style.display=view==='leader'?'block':'none';
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-    if(view!=='layout') setPanelOpen(false);
-    if(view==='swipe'){refreshCommunity(false);}
-    if(view==='leader'){refreshCommunity(false);}
-  }
-
-  function importFromHash(){
-    if(!location.hash.startsWith('#layout=')) return;
-    try{importShared(decodeURIComponent(location.hash.slice(8)));history.replaceState(null,'',location.pathname+location.search);}
-    catch(_){toast('Geteilter Layout-Link konnte nicht gelesen werden');}
   }
 
   function renderAll(){
@@ -2219,6 +2352,7 @@ const db = getFirestore(firebaseApp);
   document.getElementById('resetSwipeBtn').onclick=()=>refreshCommunity(true);
 
   document.body.dataset.view='layout';
+  initLayoutPreviewModal();
   load();
   fitMap();
   renderAll();
@@ -2249,5 +2383,27 @@ const db = getFirestore(firebaseApp);
 </script>
 
 <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
+
+<div class="preview-modal" id="layoutPreviewModal" aria-hidden="true">
+  <div class="preview-panel">
+    <div class="preview-modal-head">
+      <div>
+        <div class="preview-modal-title" id="layoutPreviewTitle">Layout</div>
+        <div class="preview-modal-sub" id="layoutPreviewMeta">Zoom und Details</div>
+      </div>
+      <div class="preview-modal-actions">
+        <button id="layoutZoomOutBtn">−</button>
+        <button id="layoutZoomInBtn" class="primary">＋</button>
+        <button id="layoutZoomResetBtn">Fit</button>
+        <button id="layoutPreviewCloseBtn">Schließen</button>
+      </div>
+    </div>
+    <div class="preview-canvas-wrap" id="layoutPreviewScroll">
+      <div class="preview-canvas" id="layoutPreviewCanvas">
+        <svg id="layoutPreviewSvg"></svg>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
