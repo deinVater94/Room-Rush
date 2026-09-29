@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Room Rush – Raumplaner & Layout Voting</title>
+<meta name="description" content="Room Rush: Möbel planen, Layouts teilen, swipen und die besten Raumideen ranken." />
+<meta name="theme-color" content="#111827" />
 <style>
   :root{
     --bg:#f6f7f9; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
@@ -90,6 +92,7 @@
     <div class="hud-chip">🧩 Möbel <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
     <div class="hud-chip">✅ Plan <b id="hudValidity">bereit</b></div>
     <div class="hud-chip">🔥 Community <b id="hudCommunity">0</b></div>
+    <div class="hud-chip">☁️ Firebase <b id="hudCloud">verbinde…</b></div>
   </div>
   <nav class="game-tabs">
     <button class="tab-btn active" data-view="build">🛠 Bauen</button>
@@ -215,7 +218,7 @@
 
   <aside class="panel">
     <div class="save-card">
-      <div class="save-card-title"><span>🎮 Dein Layout</span><span class="tiny">LOCAL MVP</span></div>
+      <div class="save-card-title"><span>🎮 Dein Layout</span><span class="tiny">FIREBASE MVP</span></div>
       <input id="layoutName" value="Mein Layout" maxlength="40" aria-label="Layoutname">
       <div class="row">
         <button id="saveLayoutBtn">💾 Sichern</button>
@@ -299,7 +302,7 @@
   <div class="arena swipe-shell">
     <div class="arena-head">
       <div><h2>🔥 Swipe Arena</h2><p>Links = weiter · Rechts = gefällt mir. Auf Handy kannst du die Karte direkt swipen.</p></div>
-      <button id="resetSwipeBtn">↻ Runde neu starten</button>
+      <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
     <div class="swipe-actions" id="swipeActions">
@@ -312,11 +315,11 @@
 <section class="game-screen" id="leaderView">
   <div class="arena">
     <div class="arena-head">
-      <div><h2>🏆 Hall of Room</h2><p>Die drei aktuell bestbewerteten Layouts dieses Prototyps.</p></div>
+      <div><h2>🏆 Hall of Room</h2><p>Die drei aktuell bestbewerteten veröffentlichten Layouts aus Firebase.</p></div>
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
-    <div class="policy-card">🧹 <strong>Top-50-Regel:</strong> Der Community-Speicher behält höchstens 50 Layouts. Sobald mehr vorhanden sind, werden Einträge unterhalb der Top 50 nach Score entfernt. In dieser Datei passiert das lokal im Browser.</div>
+    <div class="policy-card">🧹 <strong>Top-50-Regel:</strong> Die Rangliste kann auf die besten 50 begrenzt werden. In dieser ersten Firebase-Version werden schlechter platzierte Layouts noch nicht automatisch aus der Datenbank gelöscht – so vermeiden wir unbeabsichtigten Datenverlust. Das automatische Aufräumen können wir danach separat ergänzen.</div>
   </div>
 </section>
 
@@ -335,7 +338,36 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInAnonymously
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  doc,
+  setDoc,
+  getDocs,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA9Cscm8x9YSPeLjlCQZL0nKBHRbnjwIBc",
+  authDomain: "room-rush-5a693.firebaseapp.com",
+  projectId: "room-rush-5a693",
+  storageBucket: "room-rush-5a693.firebasestorage.app",
+  messagingSenderId: "52227553261",
+  appId: "1:52227553261:web:f05b2e271a747e096bd9e4"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
 (() => {
   const SCALE = 100; // 100 SVG px = 1 m
   const svg = document.getElementById('plan');
@@ -667,13 +699,16 @@
     fold.textContent=item.foldedOut?'Einklappen':'Ausklappen';
   }
 
-  // ---------- Save / share / community game layer ----------
-  const COMMUNITY_KEY='roomrush-community-v1';
+  // ---------- Save / share / Firebase community layer ----------
   const SAVED_KEY='roomrush-saved-v1';
-  const SWIPED_KEY='roomrush-swiped-v1';
   let swipeQueue=[];
   let activeSwipe=null;
   let swipeDrag=null;
+
+  let firebaseUser=null;
+  let firebaseReady=false;
+  let communityCache=[];
+  let votedLayoutIds=new Set();
 
   function uid(){
     return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2);
@@ -682,61 +717,83 @@
   function toast(msg){
     const el=document.getElementById('toast');
     el.textContent=msg;el.classList.add('show');
-    clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),1800);
+    clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200);
   }
   function getJSON(key,fallback){
     try{const d=JSON.parse(localStorage.getItem(key));return d ?? fallback;}catch(_){return fallback;}
   }
   function setJSON(key,val){localStorage.setItem(key,JSON.stringify(val));}
 
-  function demoLayouts(){
-    const now=Date.now();
-    return [
-      {id:'demo-1',title:'Cinema Corner',author:'Mika',score:28,createdAt:now-800000,items:[
-        {id:1,type:'lsofa',x:265,y:305,r:0,mirrored:true,foldedOut:false},
-        {id:2,type:'table90',x:220,y:405,r:0,mirrored:false,foldedOut:false},
-        {id:3,type:'floorlamp',x:455,y:405,r:0,mirrored:false,foldedOut:false}]},
-      {id:'demo-2',title:'Workstation Flow',author:'Nora',score:24,createdAt:now-700000,items:[
-        {id:1,type:'desk270',x:245,y:145,r:0,mirrored:false,foldedOut:false},
-        {id:2,type:'office',x:245,y:215,r:0,mirrored:false,foldedOut:false},
-        {id:3,type:'sofabed',x:315,y:365,r:0,mirrored:false,foldedOut:false}]},
-      {id:'demo-3',title:'Open Lounge',author:'Alex',score:31,createdAt:now-600000,items:[
-        {id:1,type:'sofabed',x:260,y:320,r:0,mirrored:false,foldedOut:false},
-        {id:2,type:'rolltable',x:420,y:395,r:0,mirrored:false,foldedOut:false},
-        {id:3,type:'floorlamp',x:455,y:300,r:0,mirrored:false,foldedOut:false}]},
-      {id:'demo-4',title:'Desk by Day',author:'Jules',score:19,createdAt:now-500000,items:[
-        {id:1,type:'desk270',x:245,y:175,r:0,mirrored:false,foldedOut:false},
-        {id:2,type:'office',x:245,y:245,r:0,mirrored:false,foldedOut:false},
-        {id:3,type:'lsofa',x:300,y:375,r:0,mirrored:false,foldedOut:false}]},
-      {id:'demo-5',title:'Soft L',author:'Sam',score:22,createdAt:now-400000,items:[
-        {id:1,type:'lsofa',x:265,y:325,r:180,mirrored:false,foldedOut:false},
-        {id:2,type:'table90',x:285,y:205,r:90,mirrored:false,foldedOut:false},
-        {id:3,type:'floorlamp',x:445,y:420,r:0,mirrored:false,foldedOut:false}]},
-      {id:'demo-6',title:'Tiny Tables',author:'Kim',score:15,createdAt:now-300000,items:[
-        {id:1,type:'sofabed',x:260,y:340,r:0,mirrored:false,foldedOut:false},
-        {id:2,type:'rolltable',x:400,y:230,r:0,mirrored:false,foldedOut:false},
-        {id:3,type:'table90',x:150,y:215,r:90,mirrored:false,foldedOut:false}]},
-      {id:'demo-7',title:'Long Desk Club',author:'Robin',score:17,createdAt:now-200000,items:[
-        {id:1,type:'desk270',x:245,y:175,r:0,mirrored:false,foldedOut:false},
-        {id:2,type:'chair',x:170,y:245,r:0,mirrored:false,foldedOut:false},
-        {id:3,type:'chair',x:315,y:245,r:0,mirrored:false,foldedOut:false},
-        {id:4,type:'lsofa',x:300,y:380,r:0,mirrored:true,foldedOut:false}]},
-      {id:'demo-8',title:'Fold Out Night',author:'Taylor',score:20,createdAt:now-100000,items:[
-        {id:1,type:'sofabed',x:270,y:310,r:0,mirrored:false,foldedOut:true},
-        {id:2,type:'floorlamp',x:455,y:410,r:0,mirrored:false,foldedOut:false}]}
-    ];
+  function getCommunity(){
+    return communityCache;
   }
 
-  function getCommunity(){
-    let c=getJSON(COMMUNITY_KEY,null);
-    if(!Array.isArray(c) || !c.length){c=demoLayouts();setJSON(COMMUNITY_KEY,c);}
-    return c;
+  function playerName(){
+    if(!firebaseUser) return 'Gast';
+    return 'Player '+firebaseUser.uid.slice(0,4).toUpperCase();
   }
-  function pruneTop50(list){
-    const sorted=[...list].sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0));
-    return sorted.slice(0,50);
+
+  function setCloudStatus(text,ok=null){
+    const el=document.getElementById('hudCloud');
+    if(!el)return;
+    el.textContent=text;
+    el.style.color=ok===true?'#86efac':ok===false?'#fca5a5':'#fde68a';
   }
-  function saveCommunity(list){setJSON(COMMUNITY_KEY,pruneTop50(list));}
+
+  async function refreshCommunity(showToast=false){
+    if(!firebaseUser) return;
+    setCloudStatus('lädt…',null);
+
+    try{
+      const [layoutSnap,voteSnap]=await Promise.all([
+        getDocs(collection(db,'layouts')),
+        getDocs(collection(db,'votes'))
+      ]);
+
+      const voteCounts=new Map();
+      const mine=new Set();
+
+      voteSnap.forEach(snap=>{
+        const v=snap.data()||{};
+        if(v.userId===firebaseUser.uid && v.layoutId) mine.add(v.layoutId);
+        if(v.value===1 && v.layoutId){
+          voteCounts.set(v.layoutId,(voteCounts.get(v.layoutId)||0)+1);
+        }
+      });
+
+      communityCache=layoutSnap.docs.map(snap=>{
+        const d=snap.data()||{};
+        const createdAt=d.createdAt && typeof d.createdAt.toMillis==='function'
+          ? d.createdAt.toMillis()
+          : Number(d.createdAt)||0;
+
+        return {
+          id:snap.id,
+          title:String(d.title||'Unbenannt').slice(0,40),
+          author:String(d.author||'Gast').slice(0,40),
+          ownerId:d.ownerId||'',
+          items:Array.isArray(d.items)?d.items:[],
+          createdAt,
+          score:voteCounts.get(snap.id)||0
+        };
+      });
+
+      votedLayoutIds=mine;
+      firebaseReady=true;
+      setCloudStatus('online',true);
+
+      updateHUD();
+      renderLeaderboard();
+      resetSwipeQueue();
+
+      if(showToast) toast('Community-Pool aktualisiert');
+    }catch(err){
+      console.error('Firebase refresh failed',err);
+      firebaseReady=false;
+      setCloudStatus('Fehler',false);
+      if(showToast) toast('Firebase konnte nicht geladen werden');
+    }
+  }
 
   function currentIsValid(){ return items.every(i=>statusFor(i).ok); }
   function updateHUD(){
@@ -745,7 +802,7 @@
     document.getElementById('hudTotal').textContent=total;
     const v=document.getElementById('hudValidity');
     const ok=currentIsValid();v.textContent=ok?'gültig':'prüfen';v.style.color=ok?'#86efac':'#fca5a5';
-    document.getElementById('hudCommunity').textContent=getCommunity().length;
+    document.getElementById('hudCommunity').textContent=communityCache.length;
   }
 
   function saveNamedLayout(){
@@ -825,12 +882,30 @@
     if(navigator.share){try{await navigator.share({title:layoutNameEl.value||'Room Rush Layout',text});}catch(_){}}
     else copyShare();
   }
-  function publishLayout(){
+  async function publishLayout(){
     if(!items.length){toast('Setze zuerst Möbel in den Raum');return;}
     if(!currentIsValid()){toast('Vor dem Voting bitte rote Kollisionen lösen');return;}
-    const c=getCommunity();
-    const entry={id:uid(),title:(layoutNameEl.value||'Mein Layout').trim()||'Mein Layout',author:'Du',score:0,createdAt:Date.now(),items:cloneItems()};
-    c.push(entry);saveCommunity(c);saveStatusEl.textContent='🏁 Layout ist im lokalen Voting';updateHUD();renderLeaderboard();resetSwipeQueue(false);toast('Ins Voting geschickt');
+    if(!firebaseUser || !firebaseReady){toast('Firebase verbindet noch – bitte kurz warten');return;}
+
+    const title=(layoutNameEl.value||'Mein Layout').trim().slice(0,40)||'Mein Layout';
+
+    try{
+      await addDoc(collection(db,'layouts'),{
+        title,
+        author:playerName(),
+        ownerId:firebaseUser.uid,
+        items:cloneItems(),
+        createdAt:serverTimestamp()
+      });
+
+      saveStatusEl.textContent='🏁 Layout ist im öffentlichen Firebase-Voting';
+      toast('Layout veröffentlicht');
+      await refreshCommunity(false);
+    }catch(err){
+      console.error('Publish failed',err);
+      saveStatusEl.textContent='⚠ Veröffentlichung fehlgeschlagen';
+      toast('Veröffentlichen fehlgeschlagen – Firestore-Regeln prüfen');
+    }
   }
 
   function renderStaticPreview(svgEl,layoutItems){
@@ -852,13 +927,12 @@
     svgEl.innerHTML=out;
   }
 
-  function resetSwipeQueue(clearSeen=true){
-    if(clearSeen) setJSON(SWIPED_KEY,[]);
-    const seen=new Set(getJSON(SWIPED_KEY,[]));
-    swipeQueue=getCommunity().filter(x=>x.author!=='Du' && !seen.has(x.id));
-    // stable but varied enough without relying on randomness
-    swipeQueue.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    activeSwipe=null;renderSwipeCard();
+  function resetSwipeQueue(){
+    swipeQueue=communityCache
+      .filter(x=>x.ownerId!==firebaseUser?.uid && !votedLayoutIds.has(x.id))
+      .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    activeSwipe=null;
+    renderSwipeCard();
   }
   function renderSwipeCard(){
     const deck=document.getElementById('swipeDeck');
@@ -897,21 +971,52 @@
     };
     card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);
   }
-  function voteSwipe(like){
-    if(!activeSwipe)return;
-    const card=document.getElementById('swipeCard');if(card)card.classList.add(like?'swipe-right':'swipe-left');
-    const seen=getJSON(SWIPED_KEY,[]);if(!seen.includes(activeSwipe.id)){seen.push(activeSwipe.id);setJSON(SWIPED_KEY,seen);}
+  async function voteSwipe(like){
+    if(!activeSwipe || !firebaseUser || !firebaseReady)return;
+
+    const voting=activeSwipe;
+    const card=document.getElementById('swipeCard');
+    if(card)card.classList.add(like?'swipe-right':'swipe-left');
+
+    // Optimistic UI: immediately mark as voted locally.
+    votedLayoutIds.add(voting.id);
     if(like){
-      const c=getCommunity();const found=c.find(x=>x.id===activeSwipe.id);if(found)found.score=(found.score||0)+1;saveCommunity(c);toast('♥ Stimme vergeben');
+      const cached=communityCache.find(x=>x.id===voting.id);
+      if(cached) cached.score=(cached.score||0)+1;
     }
-    swipeQueue.shift();updateHUD();renderLeaderboard();
+
+    swipeQueue.shift();
+    updateHUD();
+    renderLeaderboard();
+
     setTimeout(renderSwipeCard,180);
+
+    try{
+      // Deterministic document id => one vote per anonymous Firebase user and layout.
+      const voteId=`${firebaseUser.uid}_${voting.id}`;
+      await setDoc(doc(db,'votes',voteId),{
+        userId:firebaseUser.uid,
+        layoutId:voting.id,
+        value:like?1:0,
+        createdAt:serverTimestamp()
+      });
+
+      toast(like?'♥ Stimme vergeben':'Weiter');
+    }catch(err){
+      console.error('Vote failed',err);
+      toast('Vote konnte nicht gespeichert werden');
+      await refreshCommunity(false);
+    }
   }
 
   function renderLeaderboard(){
     const box=document.getElementById('leaderboard');
-    const top=getCommunity().sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+    const top=[...communityCache].sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0)).slice(0,3);
     box.innerHTML='';
+    if(!top.length){
+      box.innerHTML='<div class="empty-deck" style="grid-column:1/-1"><div class="emoji">☁️</div><strong>Noch keine veröffentlichten Layouts</strong><div style="margin-top:5px">Veröffentliche das erste Layout über „Ins Voting“.</div></div>';
+      return;
+    }
     top.forEach((entry,idx)=>{
       const card=document.createElement('div');card.className='leader-card';
       card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} · ${escapeHTML(entry.author||'Gast')}</div></div>`;
@@ -924,8 +1029,8 @@
     swipeView.style.display=view==='swipe'?'block':'none';
     leaderView.style.display=view==='leader'?'block':'none';
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-    if(view==='swipe'){resetSwipeQueue(false);}
-    if(view==='leader'){renderLeaderboard();}
+    if(view==='swipe'){refreshCommunity(false);}
+    if(view==='leader'){refreshCommunity(false);}
   }
 
   function importFromHash(){
@@ -988,14 +1093,33 @@
   };
   document.getElementById('passBtn').onclick=()=>voteSwipe(false);
   document.getElementById('likeBtn').onclick=()=>voteSwipe(true);
-  document.getElementById('resetSwipeBtn').onclick=()=>{resetSwipeQueue(true);toast('Swipe-Runde zurückgesetzt');};
+  document.getElementById('resetSwipeBtn').onclick=()=>refreshCommunity(true);
 
   load();
-  getCommunity();
   renderAll();
   renderLeaderboard();
-  resetSwipeQueue(false);
+  resetSwipeQueue();
   importFromHash();
+
+  // Anonymous Firebase login. No email/password account is required.
+  onAuthStateChanged(auth,async user=>{
+    if(user){
+      firebaseUser=user;
+      setCloudStatus('online',true);
+      await refreshCommunity(false);
+    }else{
+      firebaseUser=null;
+      firebaseReady=false;
+      setCloudStatus('login…',null);
+      try{
+        await signInAnonymously(auth);
+      }catch(err){
+        console.error('Anonymous auth failed',err);
+        setCloudStatus('Auth-Fehler',false);
+        toast('Anonymous Authentication ist noch nicht aktiviert oder die Domain ist nicht autorisiert');
+      }
+    }
+  });
 })();
 </script>
 </body>
