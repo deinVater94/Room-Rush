@@ -737,7 +737,7 @@
 <section class="game-screen" id="swipeView">
   <div class="arena swipe-shell">
     <div class="arena-head">
-      <div><h2>🔥 WohnzimmerSwipe</h2><p>Left = pass · Right = like. Swipe dich durch die Layouts der Community und vote für deine Favoriten.</p></div>
+      <div><h2>🔥 WohnzimmerSwipe</h2><p>Left = pass · Right = like. Swipe dich durch die Layouts der Community und vote für deine Favoriten. Diese Version testet bereits erste Möbel-Texturen.</p></div>
       <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
@@ -817,15 +817,15 @@ const db = getFirestore(firebaseApp);
   const saveStatusEl = document.getElementById('saveStatus');
 
   const defs = {
-    chair: {name:'Vierbein-Stuhl', gameClass:'S', role:'Sitzplatz', count:2, w:38, d:38, h:null, kind:'rect'},
-    office: {name:'Bürostuhl', gameClass:'M', role:'Arbeitsplatz', count:1, w:60, d:60, h:100, kind:'circle'},
-    desk270: {name:'Tisch groß', gameClass:'XL', role:'Arbeitsfläche', count:1, w:270, d:60, h:80, kind:'rect'},
-    table90: {name:'Tisch klein', gameClass:'M', role:'Ablage', count:1, w:90, d:55, h:45, kind:'rect'},
-    floorlamp: {name:'Stehlampe', gameClass:'S', role:'Licht', count:2, w:30, d:30, h:140, kind:'circle'},
-    lsofa: {name:'L-Couch', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape'},
-    sofabed: {name:'Ausklappcouch', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed'},
-    rolltable: {name:'Rolltisch', gameClass:'S', role:'Ablage', count:1, w:40, d:40, h:35, kind:'rect'},
-    jibomat: {name:'Jibomat', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect'}
+    chair: {name:'Vierbein-Stuhl', gameClass:'S', role:'Sitzplatz', count:2, w:38, d:38, h:null, kind:'rect', asset:'assets/chair_4leg.png'},
+    office: {name:'Bürostuhl', gameClass:'M', role:'Arbeitsplatz', count:1, w:60, d:60, h:100, kind:'circle', asset:'assets/office_chair.png'},
+    desk270: {name:'Tisch groß', gameClass:'XL', role:'Arbeitsfläche', count:1, w:270, d:60, h:80, kind:'rect', asset:'assets/table_large.png'},
+    table90: {name:'Tisch klein', gameClass:'M', role:'Ablage', count:1, w:90, d:55, h:45, kind:'rect', asset:'assets/table_small.png'},
+    floorlamp: {name:'Stehlampe', gameClass:'S', role:'Licht', count:2, w:30, d:30, h:140, kind:'circle', asset:'assets/floor_lamp.png'},
+    lsofa: {name:'L-Couch', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape', asset:'assets/l_couch.png', renderD:145},
+    sofabed: {name:'Ausklappcouch', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed', asset:'assets/sofabed_closed.png', assetOpen:'assets/sofabed_open.png', renderDOpen:185},
+    rolltable: {name:'Rolltisch', gameClass:'S', role:'Ablage', count:1, w:40, d:40, h:35, kind:'rect', asset:'assets/roll_table.png'},
+    jibomat: {name:'Jibomat', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect', asset:'assets/jibomat.png'}
   };
 
   const fixedObstacles = [
@@ -834,6 +834,81 @@ const db = getFirestore(firebaseApp);
     {name:'Bike B', polys:[rectPoly(281,0,30,100)]},
     {name:'Fixed Prop', polys:[rectPoly(0,440,49,25)]}
   ];
+
+
+  function itemRenderSize(item,def){
+    if(def.kind==='lshape') return {w:def.w,d:def.renderD||145};
+    if(def.kind==='sofabed' && item.foldedOut) return {w:def.w,d:def.renderDOpen||185};
+    return {w:def.w,d:def.d};
+  }
+
+  function itemAsset(def,item){
+    if(def.kind==='sofabed' && item.foldedOut && def.assetOpen) return def.assetOpen;
+    return def.asset || null;
+  }
+
+  function itemLabelOffset(item,def){
+    return itemRenderSize(item,def).d/2 + 12;
+  }
+
+  function appendFootprintOverlays(g,item,def,status,selected){
+    const stroke = !status.ok ? '#dc2626' : (selected ? '#7c3aed' : 'rgba(30,41,59,.22)');
+    const fill = !status.ok ? 'rgba(220,38,38,.16)' : (selected ? 'rgba(124,58,237,.10)' : 'rgba(255,255,255,.02)');
+    const strokeWidth = !status.ok || selected ? '2.4' : '1.1';
+
+    for(const poly of worldPolys(item)){
+      const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      p.setAttribute('points',poly.map(pt=>`${pt.x-item.x},${pt.y-item.y}`).join(' '));
+      p.setAttribute('fill',fill);
+      p.setAttribute('stroke',stroke);
+      p.setAttribute('stroke-width',strokeWidth);
+      p.setAttribute('stroke-linejoin','round');
+      g.appendChild(p);
+    }
+  }
+
+  function appendItemVisual(g,item,def){
+    const {w,d} = itemRenderSize(item,def);
+    const href = itemAsset(def,item);
+
+    if(href){
+      const img=document.createElementNS('http://www.w3.org/2000/svg','image');
+      img.setAttribute('href',href);
+      img.setAttribute('x',-w/2);
+      img.setAttribute('y',-d/2);
+      img.setAttribute('width',w);
+      img.setAttribute('height',d);
+      img.setAttribute('preserveAspectRatio','none');
+      img.setAttribute('pointer-events','none');
+      if(def.kind==='lshape' && item.mirrored){
+        img.setAttribute('transform','scale(-1 1)');
+      }
+      g.appendChild(img);
+      return true;
+    }
+    return false;
+  }
+
+  function previewItemMarkup(item){
+    const def=defs[item.type];
+    if(!def) return '';
+    const asset=itemAsset(def,item);
+    const {w,d}=itemRenderSize(item,def);
+    const outline=worldPolys(item).map(poly=>{
+      const pts=poly.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      return `<polygon points="${pts}" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.30)" stroke-width="1.25" stroke-linejoin="round"/>`;
+    }).join('');
+
+    if(!asset){
+      return outline;
+    }
+
+    const mirror = (def.kind==='lshape' && item.mirrored)
+      ? `<image href="${asset}" x="${(-w/2).toFixed(1)}" y="${(-d/2).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none" transform="scale(-1 1)"/>`
+      : `<image href="${asset}" x="${(-w/2).toFixed(1)}" y="${(-d/2).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none"/>`;
+
+    return `${outline}<g transform="translate(${item.x} ${item.y}) rotate(${item.r})">${mirror}</g>`;
+  }
 
   let items = [];
   let selectedId = null;
@@ -1007,42 +1082,31 @@ const db = getFirestore(firebaseApp);
     g.style.cursor='grab';
 
     const status=statusFor(item);
-    const stroke=status.ok ? (item.id===selectedId ? '#2563eb' : '#4b5563') : '#dc2626';
-    const fill=status.ok ? (item.id===selectedId ? 'rgba(37,99,235,.18)' : 'rgba(107,114,128,.13)') : 'rgba(220,38,38,.15)';
+    const isSelected=item.id===selectedId;
+    const hadAsset=appendItemVisual(g,item,def);
 
-    function rect(x,y,w,h,rx=5){
-      const e=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      for(const [k,v] of Object.entries({x,y,width:w,height:h,rx})) e.setAttribute(k,v);
-      e.setAttribute('fill',fill);e.setAttribute('stroke',stroke);e.setAttribute('stroke-width','2.5');
-      return e;
+    if(!hadAsset){
+      const fallback=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      fallback.setAttribute('x',-def.w/2);
+      fallback.setAttribute('y',-def.d/2);
+      fallback.setAttribute('width',def.w);
+      fallback.setAttribute('height',def.d);
+      fallback.setAttribute('rx','8');
+      fallback.setAttribute('fill','rgba(107,114,128,.18)');
+      fallback.setAttribute('stroke','rgba(30,41,59,.35)');
+      fallback.setAttribute('stroke-width','1.5');
+      g.appendChild(fallback);
     }
 
-    if(def.kind==='circle'){
-      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      c.setAttribute('cx',0);c.setAttribute('cy',0);c.setAttribute('r',def.w/2);
-      c.setAttribute('fill',fill);c.setAttribute('stroke',stroke);c.setAttribute('stroke-width','2.5');
-      g.appendChild(c);
-    } else if(def.kind==='lshape'){
-      g.appendChild(rect(-def.w/2,-def.d/2,def.w,def.d));
-      const extX=item.mirrored ? def.w/2-65 : -def.w/2;
-      g.appendChild(rect(extX,def.d/2,65,65));
-    } else if(def.kind==='sofabed'){
-      g.appendChild(rect(-def.w/2,-def.d/2,def.w,def.d,8));
-      // Sofa side sections
-      g.appendChild(rect(-def.w/2,-def.d/2,20,def.d,4));
-      g.appendChild(rect(def.w/2-20,-def.d/2,20,def.d,4));
-      if(item.foldedOut){
-        const ext=rect(-70,def.d/2,140,65,4);
-        ext.setAttribute('stroke-dasharray','6 4');
-        g.appendChild(ext);
-      }
-    } else {
-      g.appendChild(rect(-def.w/2,-def.d/2,def.w,def.d));
-    }
+    appendFootprintOverlays(g,item,def,status,isSelected);
 
     const text=document.createElementNS('http://www.w3.org/2000/svg','text');
-    text.setAttribute('x',0);text.setAttribute('y',4);text.setAttribute('text-anchor','middle');
-    text.setAttribute('font-size','10');text.setAttribute('font-weight','800');text.setAttribute('fill',status.ok?'#374151':'#991b1b');
+    text.setAttribute('x',0);
+    text.setAttribute('y',itemLabelOffset(item,def));
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('font-size','9.8');
+    text.setAttribute('font-weight',isSelected ? '900' : '800');
+    text.setAttribute('fill',status.ok ? '#111827' : '#991b1b');
     text.setAttribute('pointer-events','none');
     text.textContent=def.name;
     g.appendChild(text);
@@ -1078,8 +1142,6 @@ const db = getFirestore(firebaseApp);
       item.x=snap(p.x-drag.dx);
       item.y=snap(p.y-drag.dy);
 
-      // Keep the same SVG node alive during dragging so pointer capture
-      // remains stable on desktop and mobile.
       g.setAttribute('transform',`translate(${item.x} ${item.y}) rotate(${item.r})`);
       save();
       renderSelected();
@@ -1972,10 +2034,7 @@ const db = getFirestore(firebaseApp);
       <rect x="128" y="451" width="123" height="8" fill="rgba(245,158,11,.5)"/>`;
     for(const item of layoutItems){
       if(!defs[item.type]) continue;
-      for(const poly of worldPolys(item)){
-        const points=poly.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-        out+=`<polygon points="${points}" fill="rgba(79,70,229,.20)" stroke="#4f46e5" stroke-width="2"/>`;
-      }
+      out += previewItemMarkup(item);
     }
     svgEl.innerHTML=out;
   }
