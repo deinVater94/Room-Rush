@@ -8,7 +8,9 @@ service cloud.firestore {
 
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
-          'title', 'author', 'ownerId', 'items', 'createdAt'
+          'title', 'author', 'ownerId', 'items',
+          'autoScore', 'autoReviewVersion', 'autoReview',
+          'createdAt'
         ])
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.title is string
@@ -18,6 +20,11 @@ service cloud.firestore {
         && request.resource.data.author.size() <= 40
         && request.resource.data.items is list
         && request.resource.data.items.size() <= 20
+        && request.resource.data.autoScore is int
+        && request.resource.data.autoScore >= 0
+        && request.resource.data.autoScore <= 100
+        && request.resource.data.autoReviewVersion == 1
+        && request.resource.data.autoReview is map
         && request.resource.data.createdAt == request.time;
 
       // An owner can remove their own published layout.

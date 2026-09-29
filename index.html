@@ -75,6 +75,20 @@
   .leader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.leader-card{background:white;border:1px solid #dce3ee;border-radius:18px;overflow:hidden;box-shadow:0 12px 28px rgba(15,23,42,.08);position:relative}.leader-rank{position:absolute;z-index:4;left:12px;top:12px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#111827;color:white;font-weight:950;box-shadow:0 5px 14px rgba(0,0,0,.2)}.leader-card:nth-child(1) .leader-rank{background:#ca8a04}.leader-card:nth-child(2) .leader-rank{background:#64748b}.leader-card:nth-child(3) .leader-rank{background:#b45309}.leader-info{padding:12px 14px 14px}.leader-name{font-weight:850}.leader-score{font-size:12px;color:#64748b;margin-top:3px}
   .policy-card{margin-top:16px;background:#fff;border:1px dashed #cbd5e1;border-radius:14px;padding:11px 13px;color:#64748b;font-size:12px;line-height:1.45}
   .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.66);z-index:80;align-items:center;justify-content:center;padding:18px}.modal-backdrop.open{display:flex}.modal{width:min(620px,100%);background:white;border-radius:20px;box-shadow:0 28px 70px rgba(0,0,0,.3);padding:18px}.modal h3{margin:0 0 7px}.modal p{font-size:12px;color:#64748b;line-height:1.45}.share-code{width:100%;min-height:95px;border:1px solid #cbd5e1;border-radius:10px;padding:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;resize:vertical}
+  
+  .coach-card{margin-top:12px;border:1px solid #c7d2fe;background:linear-gradient(135deg,#eef2ff,#faf5ff);border-radius:16px;padding:12px;display:none}
+  .coach-card.show{display:block}
+  .coach-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .coach-title{font-size:12px;font-weight:900;letter-spacing:.04em;color:#4338ca}
+  .coach-score{font-size:22px;font-weight:950;color:#312e81;white-space:nowrap}
+  .coach-sub{font-size:11px;color:#64748b;margin-top:3px;line-height:1.4}
+  .coach-bar{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin:9px 0}
+  .coach-bar>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#818cf8,#8b5cf6);border-radius:999px;transition:width .25s ease}
+  .coach-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:11px;margin-top:8px}
+  .coach-grid div:nth-child(odd){color:#64748b}.coach-grid div:nth-child(even){font-weight:800;text-align:right}
+  .coach-notes{margin:9px 0 0;padding-left:18px;color:#475569;font-size:11px;line-height:1.45}
+  .coach-disclaimer{font-size:10px;color:#7c3aed;margin-top:8px;font-weight:700}
+
   .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:#111827;color:white;border-radius:999px;padding:10px 16px;font-size:12px;font-weight:700;z-index:100;opacity:0;pointer-events:none;transition:.2s ease;box-shadow:0 9px 24px rgba(0,0,0,.24)}.toast.show{opacity:1;transform:translate(-50%,0)}
   .desktop-hint{display:inline}.mobile-hint{display:none}
   @media(max-width:980px){.leader-grid{grid-template-columns:1fr}.game-header{gap:10px}.hud{order:3;width:100%}.game-tabs{margin-left:auto}.desktop-hint{display:none}.mobile-hint{display:inline}}
@@ -223,9 +237,28 @@
       <div class="row">
         <button id="saveLayoutBtn">💾 Sichern</button>
         <button id="shareLayoutBtn">🔗 Teilen</button>
+        <button id="autoRateBtn">✨ Bewerten</button>
         <button id="publishLayoutBtn" class="primary">🏁 Ins Voting</button>
       </div>
       <div class="save-status" id="saveStatus"></div>
+      <div class="coach-card" id="coachCard">
+        <div class="coach-head">
+          <div>
+            <div class="coach-title">✨ ROOM COACH</div>
+            <div class="coach-sub" id="coachBasis">Automatische Layout-Prüfung</div>
+          </div>
+          <div class="coach-score"><span id="coachScore">—</span>/100</div>
+        </div>
+        <div class="coach-bar"><span id="coachBar"></span></div>
+        <div class="coach-grid">
+          <div>Möbel</div><div id="coachItems">—</div>
+          <div>Belegungsgrad</div><div id="coachCoverage">—</div>
+          <div>Top-5-Vergleich</div><div id="coachBenchmark">—</div>
+          <div>Türbereiche</div><div id="coachDoors">—</div>
+        </div>
+        <ul class="coach-notes" id="coachNotes"></ul>
+        <div class="coach-disclaimer">Nur Orientierung · 0 Einfluss auf Likes, Tinder-Ranking oder Leaderboard.</div>
+      </div>
       <select id="savedLayoutsSelect" aria-label="Gespeicherte Layouts"><option value="">Gespeicherte Layouts …</option></select>
       <div class="row" style="margin-bottom:0">
         <button id="loadSavedBtn">↩ Laden</button>
@@ -315,7 +348,7 @@
 <section class="game-screen" id="leaderView">
   <div class="arena">
     <div class="arena-head">
-      <div><h2>🏆 Hall of Room</h2><p>Die drei aktuell bestbewerteten veröffentlichten Layouts aus Firebase.</p></div>
+      <div><h2>🏆 Hall of Room</h2><p>Ranking ausschließlich nach echten Community-Likes. Die automatische ROOM-COACH-Bewertung hat darauf keinen Einfluss.</p></div>
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
@@ -774,6 +807,8 @@ const db = getFirestore(firebaseApp);
           ownerId:d.ownerId||'',
           items:Array.isArray(d.items)?d.items:[],
           createdAt,
+          autoScore:Number.isFinite(d.autoScore)?d.autoScore:null,
+          autoReview:(d.autoReview && typeof d.autoReview==='object')?d.autoReview:null,
           score:voteCounts.get(snap.id)||0
         };
       });
@@ -793,6 +828,223 @@ const db = getFirestore(firebaseApp);
       setCloudStatus('Fehler',false);
       if(showToast) toast('Firebase konnte nicht geladen werden');
     }
+  }
+
+
+  const LIVING_AREA_CM2 = 302435 - (285*251);
+  const DOOR_CLEARANCE_ZONES = [
+    {name:'obere Tür', polys:[rectPoly(382,0,96,92)]},
+    {name:'Fenstertür', polys:[rectPoly(298,365,110,100)]}
+  ];
+
+  function polygonArea(poly){
+    let a=0;
+    for(let i=0;i<poly.length;i++){
+      const p=poly[i],q=poly[(i+1)%poly.length];
+      a += p.x*q.y - q.x*p.y;
+    }
+    return Math.abs(a)/2;
+  }
+
+  function median(values){
+    const a=values.filter(Number.isFinite).sort((x,y)=>x-y);
+    if(!a.length)return 0;
+    const m=Math.floor(a.length/2);
+    return a.length%2?a[m]:(a[m-1]+a[m])/2;
+  }
+
+  function genericLayoutStatus(layoutItems){
+    const statuses=[];
+    const allWorld=layoutItems.map(i=>worldPolys(i));
+
+    for(let idx=0;idx<layoutItems.length;idx++){
+      const item=layoutItems[idx];
+      const polys=allWorld[idx];
+      const verts=allVertices(polys);
+      let problem='';
+
+      if(!verts.every(p=>pointInRoom(p.x,p.y))){
+        problem='außerhalb des Raums';
+      }
+
+      if(!problem){
+        for(const f of fixedObstacles){
+          if(polysOverlap(polys,f.polys)){problem='Kollision mit '+f.name;break;}
+        }
+      }
+
+      if(!problem){
+        for(let j=0;j<layoutItems.length;j++){
+          if(j===idx)continue;
+          if(polysOverlap(polys,allWorld[j])){problem='Möbelkollision';break;}
+        }
+      }
+
+      const def=defs[item.type];
+      if(!problem && def && def.h!=null){
+        const minX=Math.min(...verts.map(p=>p.x));
+        if(minX<100){
+          const allowed=82+1.01*Math.max(0,minX);
+          if(def.h>allowed+0.01) problem='zu hoch unter Dachschräge';
+        }
+      }
+
+      statuses.push({ok:!problem,text:problem||'frei'});
+    }
+    return statuses;
+  }
+
+  function layoutMetrics(layoutItems){
+    const allPolys=layoutItems.flatMap(i=>worldPolys(i));
+    const area=allPolys.reduce((sum,p)=>sum+polygonArea(p),0);
+    const count=layoutItems.length;
+    const cx=count?layoutItems.reduce((s,i)=>s+i.x,0)/count:249;
+    const cy=count?layoutItems.reduce((s,i)=>s+i.y,0)/count:232.5;
+    const spread=count
+      ? layoutItems.reduce((s,i)=>s+Math.hypot(i.x-cx,i.y-cy),0)/count
+      : 0;
+
+    let doorConflicts=0;
+    for(const zone of DOOR_CLEARANCE_ZONES){
+      if(layoutItems.some(i=>polysOverlap(worldPolys(i),zone.polys))) doorConflicts++;
+    }
+
+    const status=genericLayoutStatus(layoutItems);
+    const invalid=status.filter(x=>!x.ok).length;
+
+    return {
+      count,
+      area,
+      coverage:Math.max(0,Math.min(1,area/LIVING_AREA_CM2)),
+      cx,cy,
+      spread,
+      doorConflicts,
+      invalid
+    };
+  }
+
+  function similarity(a,b,tolerance){
+    if(!Number.isFinite(a)||!Number.isFinite(b))return 0;
+    return Math.max(0,1-Math.abs(a-b)/tolerance);
+  }
+
+  function buildAutoReview(layoutItems){
+    const m=layoutMetrics(layoutItems);
+    const top=[...communityCache]
+      .sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0))
+      .slice(0,5);
+    const benchmark=top.map(x=>layoutMetrics(x.items||[]));
+    const n=benchmark.length;
+
+    let score=0;
+    const notes=[];
+
+    // 40 pts: basic validity
+    if(m.invalid===0){
+      score+=40;
+      notes.push('Keine Kollisionen oder Raumgrenzen-Probleme erkannt.');
+    }else{
+      const validPoints=Math.max(0,40-m.invalid*15);
+      score+=validPoints;
+      notes.push(`${m.invalid} Platzierungsproblem${m.invalid===1?'':'e'} erkannt.`);
+    }
+
+    // 15 pts: door clearance
+    const doorPoints=m.doorConflicts===0?15:m.doorConflicts===1?7:0;
+    score+=doorPoints;
+    notes.push(m.doorConflicts===0
+      ? 'Beide Türbereiche bleiben frei.'
+      : `${m.doorConflicts} Türbereich${m.doorConflicts===1?'':'e'} werden von Möbeln belegt.`);
+
+    let benchmarkText='noch keine Daten';
+    let basisText='Grundcheck – noch keine Community-Benchmark';
+
+    if(n){
+      const bm={
+        count:median(benchmark.map(x=>x.count)),
+        coverage:median(benchmark.map(x=>x.coverage)),
+        cx:median(benchmark.map(x=>x.cx)),
+        cy:median(benchmark.map(x=>x.cy)),
+        spread:median(benchmark.map(x=>x.spread))
+      };
+
+      // 45 pts: similarity to the current top 5 (or available top N)
+      const countSim=similarity(m.count,bm.count,Math.max(3,bm.count||3));
+      const covSim=similarity(m.coverage,bm.coverage,0.14);
+      const centerDist=Math.hypot((m.cx-bm.cx)/498,(m.cy-bm.cy)/465);
+      const centerSim=Math.max(0,1-centerDist/0.45);
+      const spreadSim=similarity(m.spread,bm.spread,140);
+
+      score += 10*countSim + 15*covSim + 10*centerSim + 10*spreadSim;
+
+      benchmarkText=`Top ${n} nach Likes`;
+      basisText=`Vergleich mit ${n===5?'den Top 5':`Top ${n}`} Community-Layout${n===1?'':'s'} nach Likes`;
+
+      const covDiff=(m.coverage-bm.coverage)*100;
+      if(Math.abs(covDiff)<=5){
+        notes.push(`Möbeldichte liegt nahe am Top-${n}-Median (${Math.round(bm.coverage*100)} %).`);
+      }else if(covDiff>0){
+        notes.push(`Dein Layout ist dichter möbliert als der Top-${n}-Median (${Math.round(m.coverage*100)} % vs. ${Math.round(bm.coverage*100)} %).`);
+      }else{
+        notes.push(`Dein Layout nutzt weniger Bodenfläche als der Top-${n}-Median (${Math.round(m.coverage*100)} % vs. ${Math.round(bm.coverage*100)} %).`);
+      }
+
+      const itemDiff=m.count-bm.count;
+      if(Math.abs(itemDiff)<=1){
+        notes.push(`Möbelanzahl ähnelt den Top-${n}-Layouts.`);
+      }else if(itemDiff>1){
+        notes.push(`Du nutzt mehr Einzelmöbel als der Top-${n}-Median (${m.count} vs. ${Math.round(bm.count)}).`);
+      }else{
+        notes.push(`Du nutzt weniger Einzelmöbel als der Top-${n}-Median (${m.count} vs. ${Math.round(bm.count)}).`);
+      }
+    }else{
+      // Fallback 45 pts without community data
+      const coverageTarget=0.25;
+      score += 20*similarity(m.coverage,coverageTarget,0.22);
+      score += 15*Math.min(1,m.count/7);
+      const centerDist=Math.hypot((m.cx-249)/498,(m.cy-250)/465);
+      score += 10*Math.max(0,1-centerDist/0.55);
+      notes.push('Sobald Community-Layouts Likes haben, wird dieser Teil gegen die Top 5 kalibriert.');
+    }
+
+    score=Math.max(0,Math.min(100,Math.round(score)));
+
+    return {
+      score,
+      benchmarkCount:n,
+      benchmarkText,
+      basisText,
+      metrics:{
+        itemCount:m.count,
+        coverage:Number((m.coverage*100).toFixed(1)),
+        doorConflicts:m.doorConflicts,
+        invalid:m.invalid,
+        centerX:Number((m.cx/100).toFixed(2)),
+        centerY:Number((m.cy/100).toFixed(2))
+      },
+      notes:notes.slice(0,4)
+    };
+  }
+
+  function showAutoReview(review){
+    const card=document.getElementById('coachCard');
+    card.classList.add('show');
+    document.getElementById('coachScore').textContent=review.score;
+    document.getElementById('coachBar').style.width=review.score+'%';
+    document.getElementById('coachBasis').textContent=review.basisText;
+    document.getElementById('coachItems').textContent=review.metrics.itemCount;
+    document.getElementById('coachCoverage').textContent=review.metrics.coverage.toFixed(1).replace('.',',')+' %';
+    document.getElementById('coachBenchmark').textContent=review.benchmarkText;
+    document.getElementById('coachDoors').textContent=review.metrics.doorConflicts===0?'frei':review.metrics.doorConflicts+' belegt';
+    document.getElementById('coachNotes').innerHTML=review.notes.map(n=>`<li>${escapeHTML(n)}</li>`).join('');
+  }
+
+  function autoRateCurrent(){
+    if(!items.length){toast('Setze zuerst Möbel in den Raum');return null;}
+    const review=buildAutoReview(cloneItems());
+    showAutoReview(review);
+    toast(`ROOM COACH: ${review.score}/100`);
+    return review;
   }
 
   function currentIsValid(){ return items.every(i=>statusFor(i).ok); }
@@ -888,6 +1140,8 @@ const db = getFirestore(firebaseApp);
     if(!firebaseUser || !firebaseReady){toast('Firebase verbindet noch – bitte kurz warten');return;}
 
     const title=(layoutNameEl.value||'Mein Layout').trim().slice(0,40)||'Mein Layout';
+    const review=buildAutoReview(cloneItems());
+    showAutoReview(review);
 
     try{
       await addDoc(collection(db,'layouts'),{
@@ -895,10 +1149,17 @@ const db = getFirestore(firebaseApp);
         author:playerName(),
         ownerId:firebaseUser.uid,
         items:cloneItems(),
+        autoScore:review.score,
+        autoReviewVersion:1,
+        autoReview:{
+          benchmarkCount:review.benchmarkCount,
+          metrics:review.metrics,
+          notes:review.notes
+        },
         createdAt:serverTimestamp()
       });
 
-      saveStatusEl.textContent='🏁 Layout ist im öffentlichen Firebase-Voting';
+      saveStatusEl.textContent=`🏁 Im Voting · ROOM COACH ${review.score}/100 · Ranking nur nach Likes`;
       toast('Layout veröffentlicht');
       await refreshCommunity(false);
     }catch(err){
@@ -944,9 +1205,9 @@ const db = getFirestore(firebaseApp);
     activeSwipe=swipeQueue[0];
     deck.innerHTML=`<div class="swipe-card" id="swipeCard">
       <div class="swipe-stamp stamp-like" id="likeStamp">LIKE</div><div class="swipe-stamp stamp-pass" id="passStamp">PASS</div>
-      <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')}</div></div><div class="score-badge">♥ ${activeSwipe.score||0}</div></div>
+      <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')}</div></div><div class="score-badge">♥ ${activeSwipe.score||0} Likes</div></div>
       <div class="preview-wrap"><svg class="preview-svg" id="swipePreview"></svg></div>
-      <div class="swipe-footer">${activeSwipe.items.length} Möbel · Swipe oder nutze die Buttons</div>
+      <div class="swipe-footer">${activeSwipe.items.length} Möbel${Number.isFinite(activeSwipe.autoScore)?` · ✨ Auto ${activeSwipe.autoScore}/100`:''} · Ranking nur nach Likes</div>
     </div>`;
     renderStaticPreview(document.getElementById('swipePreview'),activeSwipe.items);
     attachSwipeGesture();
@@ -1019,7 +1280,7 @@ const db = getFirestore(firebaseApp);
     }
     top.forEach((entry,idx)=>{
       const card=document.createElement('div');card.className='leader-card';
-      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} · ${escapeHTML(entry.author||'Gast')}</div></div>`;
+      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div></div>`;
       box.appendChild(card);renderStaticPreview(card.querySelector('svg'),entry.items);
     });
   }
@@ -1080,6 +1341,7 @@ const db = getFirestore(firebaseApp);
   document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));
   document.getElementById('saveLayoutBtn').onclick=saveNamedLayout;
   document.getElementById('shareLayoutBtn').onclick=openShare;
+  document.getElementById('autoRateBtn').onclick=autoRateCurrent;
   document.getElementById('publishLayoutBtn').onclick=publishLayout;
   document.getElementById('loadSavedBtn').onclick=loadSavedLayout;
   document.getElementById('deleteSavedBtn').onclick=deleteSavedLayout;
