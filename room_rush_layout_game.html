@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Room Rush – Raumplaner & Layout Voting</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+    --grid:#e5e7eb; --accent:#2563eb; --bad:#dc2626; --good:#15803d;
+    --fixed:#f59e0b; --fixedFill:rgba(245,158,11,.22);
+    --roof:#8b5cf6; --roofFill:rgba(139,92,246,.13);
+    --kitchen:#059669; --kitchenFill:rgba(16,185,129,.10);
+    --door:#0891b2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:15px 20px;background:var(--panel);border-bottom:1px solid #e5e7eb}
+  h1{margin:0;font-size:20px} header p{margin:4px 0 0;color:var(--muted);font-size:14px}
+  .app{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:16px;padding:16px;min-height:calc(100vh - 76px)}
+  .stage-wrap,.panel{background:var(--panel);border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+  .stage-wrap{display:flex;align-items:center;justify-content:center;overflow:auto;padding:16px;min-height:700px}
+  svg{width:min(100%,1050px);height:auto;user-select:none;touch-action:none}
+  .panel{padding:15px;max-height:calc(100vh - 108px);overflow:auto}
+  .panel h2{font-size:16px;margin:0 0 10px}.panel h3{font-size:14px;margin:18px 0 8px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:9px 0}
+  button{appearance:none;border:1px solid #d1d5db;background:white;border-radius:9px;padding:8px 10px;cursor:pointer;font-weight:650}
+  button:hover:not(:disabled){background:#f9fafb} button:disabled{opacity:.42;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:white}
+  button.danger{color:#b91c1c;border-color:#fecaca}
+  .catalog{display:grid;gap:7px}
+  .catalog-item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:9px;border:1px solid #e5e7eb;border-radius:10px}
+  .catalog-title{font-size:13px;font-weight:750}.catalog-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;margin-right:5px}
+  .kv{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-size:13px;margin:8px 0}
+  .kv div:nth-child(odd){color:var(--muted)} .value{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .hint,.note{margin-top:12px;padding:10px 11px;border-radius:10px;background:#f3f4f6;color:#4b5563;font-size:12px;line-height:1.5}
+  .note{background:#fff7ed;color:#7c2d12}
+  .pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700}
+  .p-fixed{background:rgba(245,158,11,.16);color:#92400e}.p-roof{background:rgba(139,92,246,.14);color:#6d28d9}.p-kitchen{background:rgba(16,185,129,.14);color:#047857}
+  .selected-title{font-weight:800;font-size:14px}.small{font-size:11px;color:var(--muted)}
+  .status-good{color:var(--good)}.status-bad{color:var(--bad)}
+  input[type=checkbox]{transform:translateY(1px)}
+  @media(max-width:980px){.app{grid-template-columns:1fr}.panel{max-height:none}.stage-wrap{min-height:540px}}
+
+  /* --- Game / community UI --- */
+  body{background:radial-gradient(circle at 15% 0%,#eef2ff 0,#f6f7f9 42%,#eef2f7 100%)}
+  .game-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 18px;background:rgba(17,24,39,.96);color:#fff;border-bottom:1px solid #111827;position:sticky;top:0;z-index:30;box-shadow:0 8px 24px rgba(17,24,39,.18)}
+  .game-brand{display:flex;align-items:center;gap:10px;min-width:190px}
+  .game-logo{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#7c3aed,#2563eb);box-shadow:0 5px 14px rgba(37,99,235,.34);font-size:19px}
+  .game-brand strong{display:block;font-size:15px;letter-spacing:.05em}.game-brand span{display:block;font-size:10px;color:#a5b4fc;letter-spacing:.14em;text-transform:uppercase}
+  .hud{display:flex;gap:8px;flex-wrap:wrap;flex:1}.hud-chip{background:#273244;border:1px solid #3c4a61;border-radius:999px;padding:6px 10px;font-size:12px;color:#dbeafe}.hud-chip b{color:#fff}
+  .game-tabs{display:flex;gap:6px}.tab-btn{border:1px solid #435066;background:#273244;color:#dbeafe;border-radius:11px;padding:8px 11px}.tab-btn.active{background:#fff;color:#111827;border-color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  .game-subhead{padding:10px 18px 0;font-size:12px;color:#64748b}
+  .app{padding-top:12px}
+  .stage-wrap{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);position:relative}
+  .stage-wrap:before{content:'BUILD MODE';position:absolute;left:18px;top:16px;font-size:10px;font-weight:900;letter-spacing:.16em;color:#6366f1;background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:5px 8px;z-index:3}
+  .panel{border:1px solid #dfe5ee}.panel h2{letter-spacing:.01em}
+  .save-card{background:linear-gradient(145deg,#111827,#1f2937);color:white;border-radius:14px;padding:12px;margin-bottom:14px;box-shadow:0 10px 22px rgba(17,24,39,.18)}
+  .save-card-title{font-weight:850;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}.save-card .tiny{font-size:10px;color:#a5b4fc;font-weight:600}
+  .save-card input,.save-card select{width:100%;border:1px solid #475569;background:#0f172a;color:white;border-radius:9px;padding:9px 10px;outline:none}
+  .save-card select{margin-top:7px;font-size:11px}.save-card input:focus{border-color:#818cf8;box-shadow:0 0 0 3px rgba(129,140,248,.18)}
+  .save-card button{background:#334155;border-color:#475569;color:white}.save-card button.primary{background:linear-gradient(145deg,#7c3aed,#2563eb);border:0}.save-status{min-height:16px;color:#c7d2fe;font-size:11px;margin-top:5px}
+  .game-screen{display:none;padding:18px;min-height:calc(100vh - 70px)}
+  .arena{max-width:920px;margin:0 auto}.arena-head{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:14px;flex-wrap:wrap}.arena h2{margin:0;font-size:24px}.arena p{margin:4px 0 0;color:#64748b;font-size:13px}
+  .swipe-shell{max-width:660px;margin:0 auto}.swipe-card{background:white;border:1px solid #dce3ee;border-radius:24px;box-shadow:0 22px 50px rgba(15,23,42,.14);overflow:hidden;touch-action:none;transform-origin:center 110%;transition:transform .18s ease,opacity .18s ease;position:relative}
+  .swipe-card.dragging{transition:none}.swipe-card.swipe-left{transform:translateX(-130%) rotate(-18deg);opacity:0}.swipe-card.swipe-right{transform:translateX(130%) rotate(18deg);opacity:0}
+  .swipe-stamp{position:absolute;top:22px;z-index:4;font-size:24px;font-weight:950;letter-spacing:.08em;border:4px solid;padding:5px 9px;border-radius:10px;opacity:0;pointer-events:none}.stamp-like{left:24px;color:#16a34a;border-color:#16a34a;transform:rotate(-12deg)}.stamp-pass{right:24px;color:#ef4444;border-color:#ef4444;transform:rotate(12deg)}
+  .swipe-meta{padding:15px 17px 6px;display:flex;justify-content:space-between;gap:12px;align-items:start}.swipe-meta h3{margin:0;font-size:18px}.score-badge{white-space:nowrap;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:800}
+  .preview-wrap{padding:4px 12px 10px}.preview-svg{width:100%;height:auto;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0}
+  .swipe-footer{padding:4px 17px 16px;color:#64748b;font-size:12px}.swipe-actions{display:flex;justify-content:center;gap:26px;margin-top:18px}.swipe-action{width:66px;height:66px;border-radius:50%;font-size:26px;display:grid;place-items:center;box-shadow:0 9px 24px rgba(15,23,42,.13)}.swipe-action.pass{color:#ef4444;border:2px solid #fecaca}.swipe-action.like{color:#16a34a;border:2px solid #bbf7d0}.swipe-action:active{transform:scale(.94)}
+  .empty-deck{text-align:center;padding:70px 20px;background:white;border-radius:22px;border:1px solid #e2e8f0;color:#64748b}.empty-deck .emoji{font-size:46px;margin-bottom:10px}
+  .leader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.leader-card{background:white;border:1px solid #dce3ee;border-radius:18px;overflow:hidden;box-shadow:0 12px 28px rgba(15,23,42,.08);position:relative}.leader-rank{position:absolute;z-index:4;left:12px;top:12px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#111827;color:white;font-weight:950;box-shadow:0 5px 14px rgba(0,0,0,.2)}.leader-card:nth-child(1) .leader-rank{background:#ca8a04}.leader-card:nth-child(2) .leader-rank{background:#64748b}.leader-card:nth-child(3) .leader-rank{background:#b45309}.leader-info{padding:12px 14px 14px}.leader-name{font-weight:850}.leader-score{font-size:12px;color:#64748b;margin-top:3px}
+  .policy-card{margin-top:16px;background:#fff;border:1px dashed #cbd5e1;border-radius:14px;padding:11px 13px;color:#64748b;font-size:12px;line-height:1.45}
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.66);z-index:80;align-items:center;justify-content:center;padding:18px}.modal-backdrop.open{display:flex}.modal{width:min(620px,100%);background:white;border-radius:20px;box-shadow:0 28px 70px rgba(0,0,0,.3);padding:18px}.modal h3{margin:0 0 7px}.modal p{font-size:12px;color:#64748b;line-height:1.45}.share-code{width:100%;min-height:95px;border:1px solid #cbd5e1;border-radius:10px;padding:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;resize:vertical}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:#111827;color:white;border-radius:999px;padding:10px 16px;font-size:12px;font-weight:700;z-index:100;opacity:0;pointer-events:none;transition:.2s ease;box-shadow:0 9px 24px rgba(0,0,0,.24)}.toast.show{opacity:1;transform:translate(-50%,0)}
+  .desktop-hint{display:inline}.mobile-hint{display:none}
+  @media(max-width:980px){.leader-grid{grid-template-columns:1fr}.game-header{gap:10px}.hud{order:3;width:100%}.game-tabs{margin-left:auto}.desktop-hint{display:none}.mobile-hint{display:inline}}
+  @media(max-width:560px){.game-header{padding:10px 12px}.game-brand{min-width:0;flex:1}.game-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.tab-btn{font-size:11px;padding:8px 5px}.hud-chip{font-size:10px}.game-screen{padding:12px}.swipe-action{width:60px;height:60px}.save-card .row{display:grid;grid-template-columns:1fr 1fr}.save-card .row button:last-child{grid-column:1/-1}}
+
+</style>
+</head>
+<body>
+<div class="game-header">
+  <div class="game-brand">
+    <div class="game-logo">🛋️</div>
+    <div><strong>ROOM RUSH</strong><span>layout challenge</span></div>
+  </div>
+  <div class="hud">
+    <div class="hud-chip">🧩 Möbel <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
+    <div class="hud-chip">✅ Plan <b id="hudValidity">bereit</b></div>
+    <div class="hud-chip">🔥 Community <b id="hudCommunity">0</b></div>
+  </div>
+  <nav class="game-tabs">
+    <button class="tab-btn active" data-view="build">🛠 Bauen</button>
+    <button class="tab-btn" data-view="swipe">🔥 Bewerten</button>
+    <button class="tab-btn" data-view="leader">🏆 Top 3</button>
+  </nav>
+</div>
+<div class="game-subhead">Plane deinen Raum, sichere Varianten und lass Layouts gegeneinander antreten.</div>
+
+<div class="app" id="buildView">
+  <div class="stage-wrap">
+    <svg id="plan" viewBox="-70 -70 920 585" aria-label="Interaktiver Grundriss">
+      <defs>
+        <pattern id="smallGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+          <path d="M25 0L0 0 0 25" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+        </pattern>
+        <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+          <rect width="50" height="50" fill="url(#smallGrid)"/>
+          <path d="M50 0L0 0 0 50" fill="none" stroke="#cfd5df" stroke-width="1.2"/>
+        </pattern>
+        <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".18"/>
+        </filter>
+      </defs>
+
+      <rect x="-70" y="-70" width="920" height="585" fill="url(#grid)"/>
+
+      <path id="roomFill"
+        d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
+        fill="#fff" stroke="none"/>
+
+      <!-- Dachschräge: Höhe linear aus den beiden Messpunkten -->
+      <g>
+        <rect x="0" y="0" width="100" height="465" fill="var(--roofFill)"/>
+        <path d="M100 0L100 465" stroke="var(--roof)" stroke-width="2" stroke-dasharray="8 6"/>
+        <text x="12" y="26" fill="var(--roof)" font-size="12" font-weight="800">Dachschräge</text>
+        <text x="12" y="44" fill="var(--roof)" font-size="10">0 cm: 82 cm hoch</text>
+        <text x="12" y="59" fill="var(--roof)" font-size="10">100 cm: 183 cm hoch</text>
+      </g>
+
+      <!-- Küche komplett fest -->
+      <g>
+        <rect x="498" y="0" width="285" height="251" fill="var(--kitchenFill)" stroke="var(--kitchen)" stroke-width="2.5" stroke-dasharray="10 7"/>
+        <text x="640" y="108" text-anchor="middle" fill="#047857" font-size="17" font-weight="900">KÜCHE FEST</text>
+        <text x="640" y="128" text-anchor="middle" fill="#047857" font-size="11">keine neue Möblierung</text>
+        <!-- Küchenzeile -->
+        <rect x="506" y="0" width="277" height="67" fill="rgba(16,185,129,.18)" stroke="var(--kitchen)" stroke-width="2"/>
+        <text x="645" y="40" text-anchor="middle" fill="#047857" font-size="12" font-weight="800">Küchenzeile</text>
+        <!-- Tisch + Stühle -->
+        <rect x="713" y="181" width="60" height="60" fill="rgba(245,158,11,.13)" stroke="#b45309" stroke-width="2"/>
+        <rect x="718" y="131" width="50" height="45" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2"/>
+        <rect x="663" y="186" width="45" height="50" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2"/>
+        <text x="743" y="215" text-anchor="middle" fill="#92400e" font-size="10" font-weight="700">60×60</text>
+      </g>
+
+      <!-- Fahrräder: Positionen anhand Abstand zum Punkt B -->
+      <g>
+        <g transform="translate(353 50)">
+          <rect x="-15" y="-50" width="30" height="100" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
+          <circle cx="-8" cy="-28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
+          <circle cx="8" cy="28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
+          <path d="M-8-28L7-8L-2 10L8 28" fill="none" stroke="#b45309" stroke-width="2"/>
+          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">Rad 1</text>
+        </g>
+        <g transform="translate(296 50)">
+          <rect x="-15" y="-50" width="30" height="100" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
+          <circle cx="-8" cy="-28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
+          <circle cx="8" cy="28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
+          <path d="M-8-28L7-8L-2 10L8 28" fill="none" stroke="#b45309" stroke-width="2"/>
+          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">Rad 2</text>
+        </g>
+      </g>
+
+      <!-- Routerecke fest in Ecke J:
+           angenommen 49 cm entlang J–I, 25 cm in den Raum, 37 cm hoch -->
+      <g id="routerCorner">
+        <rect x="0" y="440" width="49" height="25"
+              fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
+        <text x="24.5" y="436" text-anchor="middle"
+              fill="#92400e" font-size="10" font-weight="800">Router</text>
+      </g>
+
+      <!-- Fernseher, wandhängend -->
+      <g>
+        <rect x="128" y="451" width="123" height="8" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.2"/>
+        <text x="189.5" y="438" text-anchor="middle" fill="#92400e" font-size="11" font-weight="800">TV · UK 1,10 m</text>
+      </g>
+
+      <!-- Wände mit Türöffnungen -->
+      <g fill="none" stroke="#111827" stroke-width="7" stroke-linecap="square" stroke-linejoin="round">
+        <path d="M0 0L382 0"/><path d="M478 0L496 0"/>
+        <path d="M496 0L496 67L506 67L506 0L783 0L783 251L498 251L498 465"/>
+        <path d="M498 465L408 465"/><path d="M298 465L0 465L0 0"/>
+      </g>
+
+      <!-- obere Tür -->
+      <g fill="none" stroke="#2563eb" stroke-width="3">
+        <path d="M382-8L382 8"/><path d="M478-8L478 8"/>
+        <path d="M382 0L382 86"/>
+        <path d="M468 0A86 86 0 0 1 382 86" stroke-dasharray="5 4"/>
+      </g>
+
+      <!-- Fenstertür -->
+      <g fill="none" stroke="var(--door)" stroke-width="3">
+        <path d="M298 457L298 473"/><path d="M408 457L408 473"/>
+        <path d="M298 465L298 365"/><path d="M304 459L304 371" stroke-width="1.5"/>
+        <path d="M398 465A100 100 0 0 0 298 365" stroke-dasharray="5 4"/>
+      </g>
+
+      <!-- Punkte -->
+      <g font-size="13" font-weight="800" fill="#374151">
+        <text x="-20" y="-12">A</text><text x="482" y="-12">B</text>
+        <text x="474" y="82">C</text><text x="510" y="82">D</text>
+        <text x="512" y="-12">E</text><text x="788" y="-12">F</text>
+        <text x="790" y="260">G</text><text x="476" y="244">H</text>
+        <text x="505" y="470">I</text><text x="-20" y="472">J</text>
+      </g>
+
+      <!-- dynamische Möbel -->
+      <g id="furnitureLayer"></g>
+    </svg>
+  </div>
+
+  <aside class="panel">
+    <div class="save-card">
+      <div class="save-card-title"><span>🎮 Dein Layout</span><span class="tiny">LOCAL MVP</span></div>
+      <input id="layoutName" value="Mein Layout" maxlength="40" aria-label="Layoutname">
+      <div class="row">
+        <button id="saveLayoutBtn">💾 Sichern</button>
+        <button id="shareLayoutBtn">🔗 Teilen</button>
+        <button id="publishLayoutBtn" class="primary">🏁 Ins Voting</button>
+      </div>
+      <div class="save-status" id="saveStatus"></div>
+      <select id="savedLayoutsSelect" aria-label="Gespeicherte Layouts"><option value="">Gespeicherte Layouts …</option></select>
+      <div class="row" style="margin-bottom:0">
+        <button id="loadSavedBtn">↩ Laden</button>
+        <button id="deleteSavedBtn">🗑 Löschen</button>
+      </div>
+    </div>
+
+    <h2>Möbelbestand</h2>
+    <div class="catalog" id="catalog"></div>
+
+    <h3>Ausgewähltes Möbel</h3>
+    <div id="noneSelected" class="small">Klicke ein Möbel im Grundriss an.</div>
+    <div id="selectedPanel" style="display:none">
+      <div class="selected-title" id="selName"></div>
+      <div class="kv">
+        <div>Grundfläche</div><div class="value" id="selSize">—</div>
+        <div>Höhe</div><div class="value" id="selHeight">—</div>
+        <div>X</div><div class="value" id="selX">—</div>
+        <div>Y</div><div class="value" id="selY">—</div>
+        <div>Drehung</div><div class="value" id="selR">—</div>
+        <div>Status</div><div class="value" id="selStatus">—</div>
+      </div>
+      <div class="row">
+        <button id="rotL" class="primary">↺ 15° drehen</button>
+        <button id="rotR" class="primary">↻ 15° drehen</button>
+        <button id="mirrorBtn" style="display:none">L spiegeln</button>
+        <button id="foldBtn" style="display:none">Ausklappen</button>
+      </div>
+      <div class="row">
+        <button id="removeBtn" class="danger">Zurück in Bestand</button>
+      </div>
+    </div>
+
+    <h3>Planung</h3>
+    <div class="row">
+      <label><input id="snap" type="checkbox" checked> 5-cm-Raster</label>
+      <button id="clearBtn">Bewegliche Möbel leeren</button>
+    </div>
+    <div class="row">
+      <span class="pill p-fixed">orange = fest</span>
+      <span class="pill p-kitchen">grün = Küche gesperrt</span>
+      <span class="pill p-roof">lila = Dachschräge</span>
+    </div>
+
+    <div class="hint">
+      Möbel werden per Klick aus dem Bestand in die Raummitte gesetzt.
+      <strong>Einmal anklicken/antippen reicht jetzt zur Auswahl</strong> – die Eigenschaften bleiben sichtbar, bis du ein anderes Möbel oder eine freie Stelle auswählst.
+      Zum Drehen: <strong>PC:</strong> ↺/↻ oder Q/E. <strong>Handy:</strong> ↺/↻ unter „Ausgewähltes Möbel“.
+      Rot bedeutet Kollision, außerhalb des Raums oder zu wenig Höhe unter der Dachschräge.
+    </div>
+
+    <div class="note">
+      <strong>Noch offen:</strong> Beim PC-Setup fehlen die Grundmaße des PC-Gehäuses.
+      Tischlampe (Ø20×30 cm) und Drucker (41×35×20 cm) führe ich als Aufstellgeräte und nicht als eigene Bodenmöbel.
+      Die Routerecke ist jetzt fest in J eingetragen (49 cm entlang J–I, 25 cm in den Raum).
+    </div>
+
+    <h3>Feste Messwerte</h3>
+    <div class="kv">
+      <div>Fahrradhalter 1 → B</div><div class="value">1,43 m</div>
+      <div>Fahrradhalter 2 → B</div><div class="value">2,00 m</div>
+      <div>Fahrräder in Raum</div><div class="value">ca. 1,00 m</div>
+      <div>TV ab I³</div><div class="value">0,47–1,70 m</div>
+      <div>TV Unterkante</div><div class="value">1,10 m</div>
+      <div>Routerecke J</div><div class="value">49×25×37 cm</div>
+      <div>Dachschräge an A–J</div><div class="value">0,82 m</div>
+      <div>bei 1 m Wandabstand</div><div class="value">1,83 m</div>
+    </div>
+  </aside>
+</div>
+
+
+<section class="game-screen" id="swipeView">
+  <div class="arena swipe-shell">
+    <div class="arena-head">
+      <div><h2>🔥 Swipe Arena</h2><p>Links = weiter · Rechts = gefällt mir. Auf Handy kannst du die Karte direkt swipen.</p></div>
+      <button id="resetSwipeBtn">↻ Runde neu starten</button>
+    </div>
+    <div id="swipeDeck"></div>
+    <div class="swipe-actions" id="swipeActions">
+      <button class="swipe-action pass" id="passBtn" aria-label="Weiter">✕</button>
+      <button class="swipe-action like" id="likeBtn" aria-label="Gefällt mir">♥</button>
+    </div>
+  </div>
+</section>
+
+<section class="game-screen" id="leaderView">
+  <div class="arena">
+    <div class="arena-head">
+      <div><h2>🏆 Hall of Room</h2><p>Die drei aktuell bestbewerteten Layouts dieses Prototyps.</p></div>
+      <div class="score-badge">Top 3</div>
+    </div>
+    <div class="leader-grid" id="leaderboard"></div>
+    <div class="policy-card">🧹 <strong>Top-50-Regel:</strong> Der Community-Speicher behält höchstens 50 Layouts. Sobald mehr vorhanden sind, werden Einträge unterhalb der Top 50 nach Score entfernt. In dieser Datei passiert das lokal im Browser.</div>
+  </div>
+</section>
+
+<div class="modal-backdrop" id="shareModal">
+  <div class="modal">
+    <h3>🔗 Layout teilen</h3>
+    <p id="shareHelp">Der Layout-Code enthält nur die Positionen deiner beweglichen Möbel. Er kann auf einem anderen Gerät in derselben App importiert werden.</p>
+    <textarea class="share-code" id="shareCode" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="copyShareBtn" class="primary">Code kopieren</button>
+      <button id="nativeShareBtn">Teilen …</button>
+      <button id="importShareBtn">Code importieren</button>
+      <button id="closeShareBtn">Schließen</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const SCALE = 100; // 100 SVG px = 1 m
+  const svg = document.getElementById('plan');
+  const roomFill = document.getElementById('roomFill');
+  const furnitureLayer = document.getElementById('furnitureLayer');
+  const catalogEl = document.getElementById('catalog');
+  const snapBox = document.getElementById('snap');
+  const buildView = document.getElementById('buildView');
+  const swipeView = document.getElementById('swipeView');
+  const leaderView = document.getElementById('leaderView');
+  const layoutNameEl = document.getElementById('layoutName');
+  const saveStatusEl = document.getElementById('saveStatus');
+
+  const defs = {
+    chair: {name:'Vierbein-Stuhl', count:2, w:38, d:38, h:null, heightLabel:'Sitz 46 cm; Gesamthöhe fehlt', kind:'rect'},
+    office: {name:'Bürostuhl', count:1, w:60, d:60, h:100, kind:'circle'},
+    desk270: {name:'Tisch 270×60', count:1, w:270, d:60, h:80, kind:'rect'},
+    table90: {name:'Tisch 90×55', count:1, w:90, d:55, h:45, kind:'rect'},
+    floorlamp: {name:'Stehlampe', count:2, w:30, d:30, h:140, kind:'circle', sizeLabel:'Ø 30 cm'},
+    lsofa: {name:'L-Couch', count:1, w:217, d:80, h:60, kind:'lshape', sizeLabel:'217×80 + L 65×65 cm'},
+    sofabed: {name:'Ausklappcouch', count:1, w:190, d:120, h:80, kind:'sofabed', sizeLabel:'190×120 cm; Ausklappfläche 140×65'},
+    rolltable: {name:'Rolltisch', count:1, w:40, d:40, h:35, kind:'rect'},
+    jibomat: {name:'Jibomat', count:1, w:30, d:21, h:45, kind:'rect'}
+  };
+
+  const fixedObstacles = [
+    {name:'Küche', polys:[rectPoly(498,0,285,251)]},
+    {name:'Fahrrad 1', polys:[rectPoly(338,0,30,100)]},
+    {name:'Fahrrad 2', polys:[rectPoly(281,0,30,100)]},
+    {name:'Routerecke', polys:[rectPoly(0,440,49,25)]}
+  ];
+
+  let items = [];
+  let selectedId = null;
+  let drag = null;
+  let nextId = 1;
+
+  function rectPoly(x,y,w,h){
+    return [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
+  }
+  function circlePoly(cx,cy,r,n=16){
+    return Array.from({length:n},(_,i)=>{
+      const a=2*Math.PI*i/n; return {x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)};
+    });
+  }
+  function rotatePoint(p,a){
+    const c=Math.cos(a),s=Math.sin(a);
+    return {x:p.x*c-p.y*s,y:p.x*s+p.y*c};
+  }
+  function transformPoly(poly,item){
+    const a=item.r*Math.PI/180;
+    return poly.map(p=>{
+      const q=rotatePoint(p,a);
+      return {x:q.x+item.x,y:q.y+item.y};
+    });
+  }
+
+  function localPolys(item){
+    const def=defs[item.type];
+    const w=def.w,d=def.d;
+    if(def.kind==='circle'){
+      return [circlePoly(0,0,w/2)];
+    }
+    if(def.kind==='lshape'){
+      // main body + 65x65 extension beyond the 80 cm depth, on left or right
+      const main=rectPoly(-w/2,-d/2,w,d);
+      const extW=65, extD=65;
+      const extX=item.mirrored ? (w/2-extW) : (-w/2);
+      const ext=rectPoly(extX,d/2,extW,extD);
+      return [main,ext];
+    }
+    if(def.kind==='sofabed'){
+      const base=rectPoly(-w/2,-d/2,w,d);
+      if(item.foldedOut){
+        // fold-out zone centered, 140 cm wide, extends 65 cm forward
+        const ext=rectPoly(-70,d/2,140,65);
+        return [base,ext];
+      }
+      return [base];
+    }
+    return [rectPoly(-w/2,-d/2,w,d)];
+  }
+
+  function worldPolys(item){
+    return localPolys(item).map(poly=>transformPoly(poly,item));
+  }
+
+  function pointInRoom(x,y){
+    const p=svg.createSVGPoint(); p.x=x;p.y=y;
+    return roomFill.isPointInFill(p);
+  }
+
+  function allVertices(polys){ return polys.flat(); }
+
+  function axes(poly){
+    const out=[];
+    for(let i=0;i<poly.length;i++){
+      const a=poly[i],b=poly[(i+1)%poly.length];
+      const ex=b.x-a.x,ey=b.y-a.y;
+      const nx=-ey,ny=ex,len=Math.hypot(nx,ny)||1;
+      out.push({x:nx/len,y:ny/len});
+    }
+    return out;
+  }
+  function project(poly,axis){
+    let min=Infinity,max=-Infinity;
+    for(const p of poly){
+      const v=p.x*axis.x+p.y*axis.y;
+      min=Math.min(min,v);max=Math.max(max,v);
+    }
+    return {min,max};
+  }
+  function overlapConvex(a,b){
+    for(const axis of [...axes(a),...axes(b)]){
+      const pa=project(a,axis),pb=project(b,axis);
+      if(pa.max<=pb.min || pb.max<=pa.min) return false;
+    }
+    return true;
+  }
+  function polysOverlap(groupA,groupB){
+    for(const a of groupA) for(const b of groupB) if(overlapConvex(a,b)) return true;
+    return false;
+  }
+
+  function statusFor(item){
+    const polys=worldPolys(item);
+    const verts=allVertices(polys);
+
+    if(!verts.every(p=>pointInRoom(p.x,p.y))){
+      return {ok:false,text:'außerhalb des Raums'};
+    }
+
+    for(const f of fixedObstacles){
+      if(polysOverlap(polys,f.polys)) return {ok:false,text:'Kollision mit '+f.name};
+    }
+
+    for(const other of items){
+      if(other.id===item.id) continue;
+      if(polysOverlap(polys,worldPolys(other))){
+        return {ok:false,text:'Kollision mit '+defs[other.type].name};
+      }
+    }
+
+    const def=defs[item.type];
+    if(def.h!=null){
+      const minX=Math.min(...verts.map(p=>p.x));
+      if(minX < 100){
+        const allowed=82 + 1.01*Math.max(0,minX); // cm
+        if(def.h > allowed + 0.01){
+          return {ok:false,text:`Dachschräge: nur ${Math.round(allowed)} cm Höhe`};
+        }
+      }
+    }
+    return {ok:true,text:def.h==null?'frei · Höhe noch ungeprüft':'frei'};
+  }
+
+  function svgPoint(evt){
+    const pt=svg.createSVGPoint();pt.x=evt.clientX;pt.y=evt.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function snap(v){ return snapBox.checked ? Math.round(v/5)*5 : v; }
+
+  function spawn(type){
+    const used=items.filter(i=>i.type===type).length;
+    if(used>=defs[type].count) return;
+    const id=nextId++;
+    items.push({id,type,x:245+(used*15),y:250+(used*15),r:0,mirrored:false,foldedOut:false});
+    selectedId=id;
+    save(); renderAll();
+  }
+
+  function itemById(id){return items.find(i=>i.id===id)}
+
+  function renderCatalog(){
+    catalogEl.innerHTML='';
+    Object.entries(defs).forEach(([key,def])=>{
+      const used=items.filter(i=>i.type===key).length;
+      const left=def.count-used;
+      const el=document.createElement('div');
+      el.className='catalog-item';
+      const info=document.createElement('div');
+      const hLabel=def.heightLabel || `${def.h} cm hoch`;
+      info.innerHTML=`<div class="catalog-title">${def.name}</div>
+        <div class="catalog-sub">${def.sizeLabel || `${def.w}×${def.d} cm`} · ${hLabel}</div>`;
+      const act=document.createElement('div');
+      const btn=document.createElement('button');
+      btn.textContent='+ setzen';
+      btn.disabled=left<=0;
+      btn.onclick=()=>spawn(key);
+      act.innerHTML=`<span class="count">${left}/${def.count}</span>`;
+      act.appendChild(btn);
+      el.append(info,act);
+      catalogEl.appendChild(el);
+    });
+  }
+
+  function createItemGroup(item){
+    const def=defs[item.type];
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.dataset.id=item.id;
+    g.setAttribute('transform',`translate(${item.x} ${item.y}) rotate(${item.r})`);
+    g.style.cursor='grab';
+
+    const status=statusFor(item);
+    const stroke=status.ok ? (item.id===selectedId ? '#2563eb' : '#4b5563') : '#dc2626';
+    const fill=status.ok ? (item.id===selectedId ? 'rgba(37,99,235,.18)' : 'rgba(107,114,128,.13)') : 'rgba(220,38,38,.15)';
+
+    function rect(x,y,w,h,rx=5){
+      const e=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      for(const [k,v] of Object.entries({x,y,width:w,height:h,rx})) e.setAttribute(k,v);
+      e.setAttribute('fill',fill);e.setAttribute('stroke',stroke);e.setAttribute('stroke-width','2.5');
+      return e;
+    }
+
+    if(def.kind==='circle'){
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',0);c.setAttribute('cy',0);c.setAttribute('r',def.w/2);
+      c.setAttribute('fill',fill);c.setAttribute('stroke',stroke);c.setAttribute('stroke-width','2.5');
+      g.appendChild(c);
+    } else if(def.kind==='lshape'){
+      g.appendChild(rect(-def.w/2,-def.d/2,def.w,def.d));
+      const extX=item.mirrored ? def.w/2-65 : -def.w/2;
+      g.appendChild(rect(extX,def.d/2,65,65));
+    } else if(def.kind==='sofabed'){
+      g.appendChild(rect(-def.w/2,-def.d/2,def.w,def.d,8));
+      // armrests, 20 cm wide
+      g.appendChild(rect(-def.w/2,-def.d/2,20,def.d,4));
+      g.appendChild(rect(def.w/2-20,-def.d/2,20,def.d,4));
+      if(item.foldedOut){
+        const ext=rect(-70,def.d/2,140,65,4);
+        ext.setAttribute('stroke-dasharray','6 4');
+        g.appendChild(ext);
+      }
+    } else {
+      g.appendChild(rect(-def.w/2,-def.d/2,def.w,def.d));
+    }
+
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',0);text.setAttribute('y',4);text.setAttribute('text-anchor','middle');
+    text.setAttribute('font-size','10');text.setAttribute('font-weight','800');text.setAttribute('fill',status.ok?'#374151':'#991b1b');
+    text.setAttribute('pointer-events','none');
+    text.textContent=def.name;
+    g.appendChild(text);
+
+    g.addEventListener('pointerdown',e=>{
+      e.stopPropagation();
+      selectedId=item.id;
+      const p=svgPoint(e);
+      drag={
+        id:item.id,
+        dx:p.x-item.x,
+        dy:p.y-item.y,
+        pointerId:e.pointerId,
+        startX:p.x,
+        startY:p.y,
+        moved:false
+      };
+      g.setPointerCapture(e.pointerId);
+      g.style.cursor='grabbing';
+      renderSelected();
+    });
+
+    g.addEventListener('pointermove',e=>{
+      if(!drag || drag.id!==item.id) return;
+      const p=svgPoint(e);
+
+      if(Math.hypot(p.x-drag.startX,p.y-drag.startY) > 3){
+        drag.moved=true;
+      }
+
+      item.x=snap(p.x-drag.dx);
+      item.y=snap(p.y-drag.dy);
+
+      // Keep the same SVG node alive during dragging so pointer capture
+      // remains stable on desktop and mobile.
+      g.setAttribute('transform',`translate(${item.x} ${item.y}) rotate(${item.r})`);
+      save();
+      renderSelected();
+    });
+
+    g.addEventListener('pointerup',e=>{
+      if(drag && drag.id===item.id){
+        try{g.releasePointerCapture(e.pointerId)}catch(_){}
+        drag=null;
+        g.style.cursor='grab';
+        save();
+        renderAll();
+      }
+      e.stopPropagation();
+    });
+
+    g.addEventListener('pointercancel',e=>{
+      drag=null;
+      g.style.cursor='grab';
+      save();
+      renderAll();
+      e.stopPropagation();
+    });
+
+    g.addEventListener('click',e=>{
+      e.stopPropagation();
+      selectedId=item.id;
+      renderAll();
+    });
+    return g;
+  }
+
+  function renderSelected(){
+    const none=document.getElementById('noneSelected');
+    const panel=document.getElementById('selectedPanel');
+    const item=itemById(selectedId);
+    if(!item){none.style.display='block';panel.style.display='none';return;}
+    none.style.display='none';panel.style.display='block';
+    const def=defs[item.type];const st=statusFor(item);
+    document.getElementById('selName').textContent=def.name;
+    document.getElementById('selSize').textContent=def.sizeLabel || `${def.w} × ${def.d} cm`;
+    document.getElementById('selHeight').textContent=def.heightLabel || `${def.h} cm`;
+    document.getElementById('selX').textContent=(item.x/SCALE).toFixed(2).replace('.',',')+' m';
+    document.getElementById('selY').textContent=(item.y/SCALE).toFixed(2).replace('.',',')+' m';
+    document.getElementById('selR').textContent=((item.r%360)+360)%360+'°';
+    const s=document.getElementById('selStatus');s.textContent=st.text;s.className='value '+(st.ok?'status-good':'status-bad');
+
+    const mirror=document.getElementById('mirrorBtn');
+    mirror.style.display=def.kind==='lshape'?'inline-block':'none';
+    mirror.textContent=item.mirrored?'L zurückspiegeln':'L spiegeln';
+
+    const fold=document.getElementById('foldBtn');
+    fold.style.display=def.kind==='sofabed'?'inline-block':'none';
+    fold.textContent=item.foldedOut?'Einklappen':'Ausklappen';
+  }
+
+  // ---------- Save / share / community game layer ----------
+  const COMMUNITY_KEY='roomrush-community-v1';
+  const SAVED_KEY='roomrush-saved-v1';
+  const SWIPED_KEY='roomrush-swiped-v1';
+  let swipeQueue=[];
+  let activeSwipe=null;
+  let swipeDrag=null;
+
+  function uid(){
+    return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+  }
+  function cloneItems(source=items){ return JSON.parse(JSON.stringify(source)); }
+  function toast(msg){
+    const el=document.getElementById('toast');
+    el.textContent=msg;el.classList.add('show');
+    clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),1800);
+  }
+  function getJSON(key,fallback){
+    try{const d=JSON.parse(localStorage.getItem(key));return d ?? fallback;}catch(_){return fallback;}
+  }
+  function setJSON(key,val){localStorage.setItem(key,JSON.stringify(val));}
+
+  function demoLayouts(){
+    const now=Date.now();
+    return [
+      {id:'demo-1',title:'Cinema Corner',author:'Mika',score:28,createdAt:now-800000,items:[
+        {id:1,type:'lsofa',x:265,y:305,r:0,mirrored:true,foldedOut:false},
+        {id:2,type:'table90',x:220,y:405,r:0,mirrored:false,foldedOut:false},
+        {id:3,type:'floorlamp',x:455,y:405,r:0,mirrored:false,foldedOut:false}]},
+      {id:'demo-2',title:'Workstation Flow',author:'Nora',score:24,createdAt:now-700000,items:[
+        {id:1,type:'desk270',x:245,y:145,r:0,mirrored:false,foldedOut:false},
+        {id:2,type:'office',x:245,y:215,r:0,mirrored:false,foldedOut:false},
+        {id:3,type:'sofabed',x:315,y:365,r:0,mirrored:false,foldedOut:false}]},
+      {id:'demo-3',title:'Open Lounge',author:'Alex',score:31,createdAt:now-600000,items:[
+        {id:1,type:'sofabed',x:260,y:320,r:0,mirrored:false,foldedOut:false},
+        {id:2,type:'rolltable',x:420,y:395,r:0,mirrored:false,foldedOut:false},
+        {id:3,type:'floorlamp',x:455,y:300,r:0,mirrored:false,foldedOut:false}]},
+      {id:'demo-4',title:'Desk by Day',author:'Jules',score:19,createdAt:now-500000,items:[
+        {id:1,type:'desk270',x:245,y:175,r:0,mirrored:false,foldedOut:false},
+        {id:2,type:'office',x:245,y:245,r:0,mirrored:false,foldedOut:false},
+        {id:3,type:'lsofa',x:300,y:375,r:0,mirrored:false,foldedOut:false}]},
+      {id:'demo-5',title:'Soft L',author:'Sam',score:22,createdAt:now-400000,items:[
+        {id:1,type:'lsofa',x:265,y:325,r:180,mirrored:false,foldedOut:false},
+        {id:2,type:'table90',x:285,y:205,r:90,mirrored:false,foldedOut:false},
+        {id:3,type:'floorlamp',x:445,y:420,r:0,mirrored:false,foldedOut:false}]},
+      {id:'demo-6',title:'Tiny Tables',author:'Kim',score:15,createdAt:now-300000,items:[
+        {id:1,type:'sofabed',x:260,y:340,r:0,mirrored:false,foldedOut:false},
+        {id:2,type:'rolltable',x:400,y:230,r:0,mirrored:false,foldedOut:false},
+        {id:3,type:'table90',x:150,y:215,r:90,mirrored:false,foldedOut:false}]},
+      {id:'demo-7',title:'Long Desk Club',author:'Robin',score:17,createdAt:now-200000,items:[
+        {id:1,type:'desk270',x:245,y:175,r:0,mirrored:false,foldedOut:false},
+        {id:2,type:'chair',x:170,y:245,r:0,mirrored:false,foldedOut:false},
+        {id:3,type:'chair',x:315,y:245,r:0,mirrored:false,foldedOut:false},
+        {id:4,type:'lsofa',x:300,y:380,r:0,mirrored:true,foldedOut:false}]},
+      {id:'demo-8',title:'Fold Out Night',author:'Taylor',score:20,createdAt:now-100000,items:[
+        {id:1,type:'sofabed',x:270,y:310,r:0,mirrored:false,foldedOut:true},
+        {id:2,type:'floorlamp',x:455,y:410,r:0,mirrored:false,foldedOut:false}]}
+    ];
+  }
+
+  function getCommunity(){
+    let c=getJSON(COMMUNITY_KEY,null);
+    if(!Array.isArray(c) || !c.length){c=demoLayouts();setJSON(COMMUNITY_KEY,c);}
+    return c;
+  }
+  function pruneTop50(list){
+    const sorted=[...list].sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0));
+    return sorted.slice(0,50);
+  }
+  function saveCommunity(list){setJSON(COMMUNITY_KEY,pruneTop50(list));}
+
+  function currentIsValid(){ return items.every(i=>statusFor(i).ok); }
+  function updateHUD(){
+    const total=Object.values(defs).reduce((s,d)=>s+d.count,0);
+    document.getElementById('hudPlaced').textContent=items.length;
+    document.getElementById('hudTotal').textContent=total;
+    const v=document.getElementById('hudValidity');
+    const ok=currentIsValid();v.textContent=ok?'gültig':'prüfen';v.style.color=ok?'#86efac':'#fca5a5';
+    document.getElementById('hudCommunity').textContent=getCommunity().length;
+  }
+
+  function saveNamedLayout(){
+    const title=(layoutNameEl.value||'Mein Layout').trim()||'Mein Layout';
+    const saved=getJSON(SAVED_KEY,[]);
+    saved.unshift({id:uid(),title,items:cloneItems(),savedAt:Date.now()});
+    setJSON(SAVED_KEY,saved.slice(0,20));
+    renderSavedLayouts();
+    saveStatusEl.textContent='✓ Variante lokal gesichert';
+    toast('Layout gesichert');
+  }
+
+  function renderSavedLayouts(){
+    const sel=document.getElementById('savedLayoutsSelect');
+    if(!sel)return;
+    const current=sel.value;
+    const saved=getJSON(SAVED_KEY,[]);
+    sel.innerHTML='<option value="">Gespeicherte Layouts …</option>' + saved.map(x=>`<option value="${x.id}">${escapeHTML(x.title)} · ${new Date(x.savedAt).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</option>`).join('');
+    if(saved.some(x=>x.id===current))sel.value=current;
+  }
+  function loadSavedLayout(){
+    const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
+    const entry=getJSON(SAVED_KEY,[]).find(x=>x.id===id);if(!entry)return;
+    items=cloneItems(entry.items);nextId=Math.max(1,...items.map(x=>Number(x.id)||0))+1;selectedId=null;layoutNameEl.value=entry.title;save();renderAll();toast('Gespeichertes Layout geladen');
+  }
+  function deleteSavedLayout(){
+    const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
+    const saved=getJSON(SAVED_KEY,[]).filter(x=>x.id!==id);setJSON(SAVED_KEY,saved);renderSavedLayouts();toast('Gespeicherte Variante gelöscht');
+  }
+
+  function encodeLayout(){
+    const payload={v:1,title:(layoutNameEl.value||'Geteiltes Layout').trim(),items:cloneItems()};
+    const bytes=new TextEncoder().encode(JSON.stringify(payload));
+    let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
+    return btoa(bin);
+  }
+  function decodeLayout(code){
+    const bin=atob(code.trim());
+    const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+    const data=JSON.parse(new TextDecoder().decode(bytes));
+    if(!data || data.v!==1 || !Array.isArray(data.items)) throw new Error('invalid');
+    return data;
+  }
+  function openShare(){
+    const code=encodeLayout();
+    document.getElementById('shareCode').value=code;
+    const help=document.getElementById('shareHelp');
+    if(location.protocol==='http:' || location.protocol==='https:'){
+      const url=new URL(location.href);url.hash='layout='+encodeURIComponent(code);
+      help.textContent='Wenn die App gehostet ist, funktioniert der Link direkt. Alternativ kann der Layout-Code importiert werden.';
+      document.getElementById('shareCode').value=url.toString();
+    }else{
+      help.textContent='Diese Datei läuft lokal. Deshalb teilen wir einen portablen Layout-Code. In einer gehosteten Version wird daraus automatisch ein direkter Link.';
+    }
+    document.getElementById('shareModal').classList.add('open');
+  }
+  function extractCode(text){
+    const s=text.trim();
+    if(s.includes('#layout=')) return decodeURIComponent(s.split('#layout=')[1].split('&')[0]);
+    return s;
+  }
+  function importShared(text){
+    const data=decodeLayout(extractCode(text));
+    items=data.items.map((i,idx)=>({...i,id:idx+1}));
+    nextId=items.length+1;selectedId=null;
+    if(data.title) layoutNameEl.value=data.title;
+    save();renderAll();setView('build');
+    toast('Geteiltes Layout geladen');
+  }
+  async function copyShare(){
+    const text=document.getElementById('shareCode').value;
+    try{await navigator.clipboard.writeText(text);toast('In Zwischenablage kopiert');}
+    catch(_){document.getElementById('shareCode').select();document.execCommand('copy');toast('Code kopiert');}
+  }
+  async function nativeShare(){
+    const text=document.getElementById('shareCode').value;
+    if(navigator.share){try{await navigator.share({title:layoutNameEl.value||'Room Rush Layout',text});}catch(_){}}
+    else copyShare();
+  }
+  function publishLayout(){
+    if(!items.length){toast('Setze zuerst Möbel in den Raum');return;}
+    if(!currentIsValid()){toast('Vor dem Voting bitte rote Kollisionen lösen');return;}
+    const c=getCommunity();
+    const entry={id:uid(),title:(layoutNameEl.value||'Mein Layout').trim()||'Mein Layout',author:'Du',score:0,createdAt:Date.now(),items:cloneItems()};
+    c.push(entry);saveCommunity(c);saveStatusEl.textContent='🏁 Layout ist im lokalen Voting';updateHUD();renderLeaderboard();resetSwipeQueue(false);toast('Ins Voting geschickt');
+  }
+
+  function renderStaticPreview(svgEl,layoutItems){
+    svgEl.setAttribute('viewBox','-18 -18 820 510');
+    let out=`<rect x="-18" y="-18" width="820" height="510" rx="18" fill="#f8fafc"/>
+      <path d="M0 0L496 0L496 67L506 67L506 0L783 0L783 251L498 251L498 465L0 465Z" fill="#fff" stroke="#111827" stroke-width="5" stroke-linejoin="round"/>
+      <rect x="0" y="0" width="100" height="465" fill="rgba(139,92,246,.09)"/>
+      <rect x="498" y="0" width="285" height="251" fill="rgba(16,185,129,.11)" stroke="#059669" stroke-width="2" stroke-dasharray="8 6"/>
+      <rect x="281" y="0" width="30" height="100" fill="rgba(245,158,11,.22)"/><rect x="338" y="0" width="30" height="100" fill="rgba(245,158,11,.22)"/>
+      <rect x="0" y="440" width="49" height="25" fill="rgba(245,158,11,.22)"/>
+      <rect x="128" y="451" width="123" height="8" fill="rgba(245,158,11,.5)"/>`;
+    for(const item of layoutItems){
+      if(!defs[item.type]) continue;
+      for(const poly of worldPolys(item)){
+        const points=poly.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        out+=`<polygon points="${points}" fill="rgba(79,70,229,.20)" stroke="#4f46e5" stroke-width="2"/>`;
+      }
+    }
+    svgEl.innerHTML=out;
+  }
+
+  function resetSwipeQueue(clearSeen=true){
+    if(clearSeen) setJSON(SWIPED_KEY,[]);
+    const seen=new Set(getJSON(SWIPED_KEY,[]));
+    swipeQueue=getCommunity().filter(x=>x.author!=='Du' && !seen.has(x.id));
+    // stable but varied enough without relying on randomness
+    swipeQueue.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    activeSwipe=null;renderSwipeCard();
+  }
+  function renderSwipeCard(){
+    const deck=document.getElementById('swipeDeck');
+    document.getElementById('swipeActions').style.display='flex';
+    if(!swipeQueue.length){
+      activeSwipe=null;deck.innerHTML='<div class="empty-deck"><div class="emoji">🏁</div><strong>Runde geschafft</strong><div style="margin-top:5px">Du hast alle verfügbaren Layouts bewertet.</div></div>';
+      document.getElementById('swipeActions').style.display='none';return;
+    }
+    activeSwipe=swipeQueue[0];
+    deck.innerHTML=`<div class="swipe-card" id="swipeCard">
+      <div class="swipe-stamp stamp-like" id="likeStamp">LIKE</div><div class="swipe-stamp stamp-pass" id="passStamp">PASS</div>
+      <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')}</div></div><div class="score-badge">♥ ${activeSwipe.score||0}</div></div>
+      <div class="preview-wrap"><svg class="preview-svg" id="swipePreview"></svg></div>
+      <div class="swipe-footer">${activeSwipe.items.length} Möbel · Swipe oder nutze die Buttons</div>
+    </div>`;
+    renderStaticPreview(document.getElementById('swipePreview'),activeSwipe.items);
+    attachSwipeGesture();
+  }
+  function escapeHTML(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+  function attachSwipeGesture(){
+    const card=document.getElementById('swipeCard');if(!card)return;
+    card.addEventListener('pointerdown',e=>{
+      swipeDrag={startX:e.clientX,dx:0,pointerId:e.pointerId};card.setPointerCapture(e.pointerId);card.classList.add('dragging');
+    });
+    card.addEventListener('pointermove',e=>{
+      if(!swipeDrag)return;swipeDrag.dx=e.clientX-swipeDrag.startX;
+      const rot=Math.max(-12,Math.min(12,swipeDrag.dx/16));card.style.transform=`translateX(${swipeDrag.dx}px) rotate(${rot}deg)`;
+      const power=Math.min(1,Math.abs(swipeDrag.dx)/100);
+      document.getElementById('likeStamp').style.opacity=swipeDrag.dx>0?power:0;
+      document.getElementById('passStamp').style.opacity=swipeDrag.dx<0?power:0;
+    });
+    const end=e=>{
+      if(!swipeDrag)return;const dx=swipeDrag.dx;swipeDrag=null;card.classList.remove('dragging');
+      try{card.releasePointerCapture(e.pointerId)}catch(_){}
+      if(Math.abs(dx)>80) voteSwipe(dx>0); else {card.style.transform='';document.getElementById('likeStamp').style.opacity=0;document.getElementById('passStamp').style.opacity=0;}
+    };
+    card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);
+  }
+  function voteSwipe(like){
+    if(!activeSwipe)return;
+    const card=document.getElementById('swipeCard');if(card)card.classList.add(like?'swipe-right':'swipe-left');
+    const seen=getJSON(SWIPED_KEY,[]);if(!seen.includes(activeSwipe.id)){seen.push(activeSwipe.id);setJSON(SWIPED_KEY,seen);}
+    if(like){
+      const c=getCommunity();const found=c.find(x=>x.id===activeSwipe.id);if(found)found.score=(found.score||0)+1;saveCommunity(c);toast('♥ Stimme vergeben');
+    }
+    swipeQueue.shift();updateHUD();renderLeaderboard();
+    setTimeout(renderSwipeCard,180);
+  }
+
+  function renderLeaderboard(){
+    const box=document.getElementById('leaderboard');
+    const top=getCommunity().sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+    box.innerHTML='';
+    top.forEach((entry,idx)=>{
+      const card=document.createElement('div');card.className='leader-card';
+      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} · ${escapeHTML(entry.author||'Gast')}</div></div>`;
+      box.appendChild(card);renderStaticPreview(card.querySelector('svg'),entry.items);
+    });
+  }
+
+  function setView(view){
+    buildView.style.display=view==='build'?'grid':'none';
+    swipeView.style.display=view==='swipe'?'block':'none';
+    leaderView.style.display=view==='leader'?'block':'none';
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+    if(view==='swipe'){resetSwipeQueue(false);}
+    if(view==='leader'){renderLeaderboard();}
+  }
+
+  function importFromHash(){
+    if(!location.hash.startsWith('#layout=')) return;
+    try{importShared(decodeURIComponent(location.hash.slice(8)));history.replaceState(null,'',location.pathname+location.search);}
+    catch(_){toast('Geteilter Layout-Link konnte nicht gelesen werden');}
+  }
+
+  function renderAll(){
+    furnitureLayer.innerHTML='';
+    for(const item of items) furnitureLayer.appendChild(createItemGroup(item));
+    renderCatalog();renderSelected();updateHUD();renderSavedLayouts();
+  }
+
+  function save(){
+    localStorage.setItem('raumplaner-moebel-v2',JSON.stringify({items,nextId}));
+  }
+  function load(){
+    try{
+      const d=JSON.parse(localStorage.getItem('raumplaner-moebel-v2'));
+      if(d && Array.isArray(d.items)){items=d.items;nextId=d.nextId||1;}
+    }catch(_){}
+  }
+
+  // Deselect only when the actual empty room/background is clicked.
+  // Clicking an item keeps it selected after mouse-up.
+  svg.addEventListener('pointerdown',e=>{
+    if(e.target===svg || e.target===roomFill){
+      selectedId=null;
+      renderAll();
+    }
+  });
+  document.getElementById('rotL').onclick=()=>{const i=itemById(selectedId);if(i){i.r-=15;save();renderAll();}};
+  document.getElementById('rotR').onclick=()=>{const i=itemById(selectedId);if(i){i.r+=15;save();renderAll();}};
+  document.getElementById('mirrorBtn').onclick=()=>{const i=itemById(selectedId);if(i){i.mirrored=!i.mirrored;save();renderAll();}};
+  document.getElementById('foldBtn').onclick=()=>{const i=itemById(selectedId);if(i){i.foldedOut=!i.foldedOut;save();renderAll();}};
+  document.getElementById('removeBtn').onclick=()=>{if(selectedId!=null){items=items.filter(i=>i.id!==selectedId);selectedId=null;save();renderAll();}};
+  document.getElementById('clearBtn').onclick=()=>{items=[];selectedId=null;save();renderAll();};
+  snapBox.addEventListener('change',renderAll);
+
+  window.addEventListener('keydown',e=>{
+    const i=itemById(selectedId);if(!i)return;
+    if(e.key.toLowerCase()==='q'){i.r-=15;save();renderAll();}
+    if(e.key.toLowerCase()==='e'){i.r+=15;save();renderAll();}
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));
+  document.getElementById('saveLayoutBtn').onclick=saveNamedLayout;
+  document.getElementById('shareLayoutBtn').onclick=openShare;
+  document.getElementById('publishLayoutBtn').onclick=publishLayout;
+  document.getElementById('loadSavedBtn').onclick=loadSavedLayout;
+  document.getElementById('deleteSavedBtn').onclick=deleteSavedLayout;
+  document.getElementById('closeShareBtn').onclick=()=>document.getElementById('shareModal').classList.remove('open');
+  document.getElementById('shareModal').addEventListener('pointerdown',e=>{if(e.target.id==='shareModal')e.currentTarget.classList.remove('open');});
+  document.getElementById('copyShareBtn').onclick=copyShare;
+  document.getElementById('nativeShareBtn').onclick=nativeShare;
+  document.getElementById('importShareBtn').onclick=()=>{
+    try{importShared(document.getElementById('shareCode').value);document.getElementById('shareModal').classList.remove('open');}
+    catch(_){toast('Ungültiger Layout-Code');}
+  };
+  document.getElementById('passBtn').onclick=()=>voteSwipe(false);
+  document.getElementById('likeBtn').onclick=()=>voteSwipe(true);
+  document.getElementById('resetSwipeBtn').onclick=()=>{resetSwipeQueue(true);toast('Swipe-Runde zurückgesetzt');};
+
+  load();
+  getCommunity();
+  renderAll();
+  renderLeaderboard();
+  resetSwipeQueue(false);
+  importFromHash();
+})();
+</script>
+</body>
+</html>
