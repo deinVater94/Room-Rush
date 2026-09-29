@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes,viewport-fit=cover" />
-<title>Room Rush – Single Map Layout Challenge</title>
-<meta name="description" content="Room Rush: ein Single-Map Layout-Game. Baue ein Layout, teile es, swipe Community-Layouts und erklimme das Ranking." />
-<meta name="theme-color" content="#111827" />
+<title>WohnzimmerTinder – Swipe dein Lieblingslayout</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%237c3aed%27/%3E%3Cpath d=%27M17 35c0-10 7-18 15-22 8 4 15 12 15 22 0 9-7 16-15 16s-15-7-15-16Z%27 fill=%27white%27/%3E%3Cpath d=%27M26 37h12v9H26z%27 fill=%27%237c3aed%27/%3E%3C/svg%3E">
+<meta name="description" content="WohnzimmerTinder: Ein Raum, viele Layouts. Baue dein Design, veröffentliche es und swipe dich durch die Community." />
+<meta name="theme-color" content="#7c3aed" />
 <style>
   :root{
     --bg:#f6f7f9; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
-    --grid:#e5e7eb; --accent:#2563eb; --bad:#dc2626; --good:#15803d;
+    --grid:#e5e7eb; --accent:#7c3aed; --bad:#dc2626; --good:#15803d;
     --fixed:#f59e0b; --fixedFill:rgba(245,158,11,.22);
     --roof:#8b5cf6; --roofFill:rgba(139,92,246,.13);
     --kitchen:#059669; --kitchenFill:rgba(16,185,129,.10);
@@ -56,7 +57,7 @@
   .game-subhead{padding:10px 18px 0;font-size:12px;color:#64748b}
   .app{padding-top:12px}
   .stage-wrap{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);position:relative}
-  .stage-wrap:before{content:'BUILD MODE';position:absolute;left:18px;top:16px;font-size:10px;font-weight:900;letter-spacing:.16em;color:#6366f1;background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:5px 8px;z-index:3}
+  .stage-wrap:before{content:'LAYOUT MODE';position:absolute;left:18px;top:16px;font-size:10px;font-weight:900;letter-spacing:.16em;color:#6366f1;background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:5px 8px;z-index:3}
   .panel{border:1px solid #dfe5ee}.panel h2{letter-spacing:.01em}
   .save-card{background:linear-gradient(145deg,#111827,#1f2937);color:white;border-radius:14px;padding:12px;margin-bottom:14px;box-shadow:0 10px 22px rgba(17,24,39,.18)}
   .save-card-title{font-weight:850;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}.save-card .tiny{font-size:10px;color:#a5b4fc;font-weight:600}
@@ -79,8 +80,8 @@
   .coach-card{margin-top:12px;border:1px solid #c7d2fe;background:linear-gradient(135deg,#eef2ff,#faf5ff);border-radius:16px;padding:12px;display:none}
   .coach-card.show{display:block}
   .coach-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .coach-title{font-size:12px;font-weight:900;letter-spacing:.04em;color:#4338ca}
-  .coach-score{font-size:22px;font-weight:950;color:#312e81;white-space:nowrap}
+  .coach-title{font-size:12px;font-weight:900;letter-spacing:.04em;color:#6d28d9}
+  .coach-score{font-size:22px;font-weight:950;color:#581c87;white-space:nowrap}
   .coach-sub{font-size:11px;color:#64748b;margin-top:3px;line-height:1.4}
   .coach-bar{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin:9px 0}
   .coach-bar>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#818cf8,#8b5cf6);border-radius:999px;transition:width .25s ease}
@@ -95,7 +96,7 @@
   @media(max-width:560px){.game-header{padding:10px 12px}.game-brand{min-width:0;flex:1}.game-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.tab-btn{font-size:11px;padding:8px 5px}.hud-chip{font-size:10px}.game-screen{padding:12px}.swipe-action{width:60px;height:60px}.save-card .row{display:grid;grid-template-columns:1fr 1fr}.save-card .row button:last-child{grid-column:1/-1}}
 
 
-  /* --- V3: app-like build screen, zoom/pan and privacy-first presentation --- */
+  /* --- V3: app-like layout screen, zoom/pan and privacy-first presentation --- */
   .stage-badge{
     position:absolute;left:18px;top:16px;z-index:7;
     display:flex;align-items:center;gap:8px;
@@ -139,7 +140,7 @@
     min-width:42px;height:40px;padding:0 9px;border-radius:11px;
     background:#273244;color:#fff;border-color:#475569
   }
-  .quick-actions button.primary{background:#4f46e5;border-color:#4f46e5}
+  .quick-actions button.primary{background:#7c3aed;border-color:#7c3aed}
   .panel-sheet-head{display:none}
   .panel-body{min-height:0}
   .panel-tabs{
@@ -153,7 +154,7 @@
   .panel-tab.active{background:#fff;color:#111827;box-shadow:0 3px 10px rgba(15,23,42,.08)}
   .panel-pane{display:none}
   .panel-pane.active{display:block}
-  .loadout-note{
+  .möbel-note{
     font-size:11px;color:#64748b;line-height:1.45;margin:2px 0 10px;
   }
   .map-rule{
@@ -179,7 +180,7 @@
 
   @media(max-width:980px){
     html,body{height:100%;overscroll-behavior:none}
-    body[data-view="build"]{overflow:hidden}
+    body[data-view="layout"]{overflow:hidden}
     .game-header{
       position:fixed;top:0;left:0;right:0;height:56px;z-index:90;
       padding:8px 10px;gap:8px;flex-wrap:nowrap;
@@ -409,7 +410,7 @@
     opacity:0;pointer-events:none;
     padding:11px 16px;border-radius:999px;
     font-weight:950;font-size:13px;letter-spacing:.08em;
-    color:#312e81;background:rgba(238,242,255,.96);
+    color:#581c87;background:rgba(238,242,255,.96);
     border:1px solid #c7d2fe;
     box-shadow:0 18px 55px rgba(79,70,229,.25);
     animation:scorePop 1350ms cubic-bezier(.2,.8,.2,1) forwards;
@@ -470,31 +471,52 @@
     #furnitureLayer > g{transition:none}
   }
 
+
+  /* WohnzimmerTinder brand */
+  .game-logo{
+    background:linear-gradient(135deg,#7c3aed,#ec4899)!important;
+    box-shadow:0 10px 28px rgba(124,58,237,.28)!important;
+  }
+  .game-brand strong{
+    letter-spacing:.04em;
+  }
+  .brand-heart{
+    display:inline-block;
+    margin-left:4px;
+    transform:translateY(1px);
+  }
+  .tab-btn.active,
+  button.primary{
+    background:linear-gradient(135deg,#7c3aed,#8b5cf6)!important;
+    border-color:#7c3aed!important;
+    color:#fff!important;
+  }
+
 </style>
 </head>
 <body>
 <div class="game-header">
   <div class="game-brand">
     <div class="game-logo">🛋️</div>
-    <div><strong>ROOM RUSH</strong><span>single-map design challenge</span></div>
+    <div><strong>WOHNZIMMERTINDER</strong><span>layout swipe game</span></div>
   </div>
   <div class="hud">
     <div class="hud-chip">🧩 Placed <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
-    <div class="hud-chip">⚡ Build <b id="hudValidity">bereit</b></div>
+    <div class="hud-chip">⚡ Layout <b id="hudValidity">bereit</b></div>
     <div class="hud-chip">🔥 Layouts <b id="hudCommunity">0</b></div>
     <div class="hud-chip">☁️ Firebase <b id="hudCloud">verbinde…</b></div>
   </div>
   <nav class="game-tabs">
-    <button class="tab-btn active" data-view="build">🛠 Build</button>
+    <button class="tab-btn active" data-view="layout">🛠 Layout</button>
     <button class="tab-btn" data-view="swipe">🔥 Swipe</button>
     <button class="tab-btn" data-view="leader">🏆 Top</button>
   </nav>
 </div>
-<div class="game-subhead">MAP 01 · Ein Loadout, eine Map, unendlich viele Layouts.</div>
+<div class="game-subhead">Ein Raum. Viele Layouts. Swipe dein Lieblingsdesign.</div>
 
-<div class="app" id="buildView">
+<div class="app" id="layoutView">
   <div class="stage-wrap">
-    <div class="stage-badge">MAP 01 // LOFTLINE</div>
+    <div class="stage-badge">WOHNZIMMER // MAP 01</div>
     <div class="zoom-controls" aria-label="Map zoom">
       <button id="zoomInBtn" title="Zoom in">＋</button>
       <div class="zoom-readout" id="zoomReadout">100%</div>
@@ -527,22 +549,22 @@
         d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
         fill="#fff" stroke="none"/>
 
-      <!-- LOW ZONE: fixed gameplay height restriction -->
+      <!-- NIEDRIGE ZONE: fixed gameplay height restriction -->
       <g>
         <rect x="0" y="0" width="100" height="465" fill="var(--roofFill)"/>
         <path d="M100 0L100 465" stroke="var(--roof)" stroke-width="2" stroke-dasharray="8 6"/>
-        <text x="12" y="29" fill="var(--roof)" font-size="12" font-weight="900">LOW ZONE</text>
-        <text x="12" y="46" fill="var(--roof)" font-size="9">HEIGHT LIMIT</text>
+        <text x="12" y="29" fill="var(--roof)" font-size="12" font-weight="900">NIEDRIGE ZONE</text>
+        <text x="12" y="46" fill="var(--roof)" font-size="9">HÖHENLIMIT</text>
       </g>
 
       <!-- Static locked gameplay zone -->
       <g>
         <rect x="498" y="0" width="285" height="251" fill="var(--kitchenFill)" stroke="var(--kitchen)" stroke-width="2.5" stroke-dasharray="10 7"/>
-        <text x="640" y="108" text-anchor="middle" fill="#047857" font-size="17" font-weight="900">LOCKED ZONE</text>
-        <text x="640" y="128" text-anchor="middle" fill="#047857" font-size="11">STATIC MAP AREA</text>
-        <!-- STATIC PROP -->
+        <text x="640" y="108" text-anchor="middle" fill="#047857" font-size="17" font-weight="900">GESPERRTER BEREICH</text>
+        <text x="640" y="128" text-anchor="middle" fill="#047857" font-size="11">FESTER BEREICH</text>
+        <!-- FEST -->
         <rect x="506" y="0" width="277" height="67" fill="rgba(16,185,129,.18)" stroke="var(--kitchen)" stroke-width="2"/>
-        <text x="645" y="40" text-anchor="middle" fill="#047857" font-size="12" font-weight="800">STATIC PROP</text>
+        <text x="645" y="40" text-anchor="middle" fill="#047857" font-size="12" font-weight="800">FEST</text>
         <!-- Tisch + Stühle -->
         <rect x="713" y="181" width="60" height="60" fill="rgba(245,158,11,.13)" stroke="#b45309" stroke-width="2"/>
         <rect x="718" y="131" width="50" height="45" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2"/>
@@ -557,14 +579,14 @@
           <circle cx="-8" cy="-28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <circle cx="8" cy="28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <path d="M-8-28L7-8L-2 10L8 28" fill="none" stroke="#b45309" stroke-width="2"/>
-          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">BIKE A</text>
+          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">RAD A</text>
         </g>
         <g transform="translate(296 50)">
           <rect x="-15" y="-50" width="30" height="100" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
           <circle cx="-8" cy="-28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <circle cx="8" cy="28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <path d="M-8-28L7-8L-2 10L8 28" fill="none" stroke="#b45309" stroke-width="2"/>
-          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">BIKE B</text>
+          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">RAD B</text>
         </g>
       </g>
 
@@ -579,7 +601,7 @@
       <!-- Static media prop -->
       <g>
         <rect x="128" y="451" width="123" height="8" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.2"/>
-        <text x="189.5" y="438" text-anchor="middle" fill="#92400e" font-size="11" font-weight="800">MEDIA</text>
+        <text x="189.5" y="438" text-anchor="middle" fill="#92400e" font-size="11" font-weight="800">TV</text>
       </g>
 
       <!-- Arena boundary with gates -->
@@ -609,9 +631,9 @@
   </div>
 
   <aside class="panel" id="toolPanel">
-    <div class="panel-sheet-head" id="panelToggle" role="button" tabindex="0" aria-label="Loadout öffnen oder schließen">
+    <div class="panel-sheet-head" id="panelToggle" role="button" tabindex="0" aria-label="Möbel öffnen oder schließen">
       <span class="sheet-handle"></span>
-      <span class="sheet-title">🎒 LOADOUT</span>
+      <span class="sheet-title">🎒 MÖBEL</span>
       <span class="sheet-meta" id="sheetMeta">tap to open</span>
       <button class="run-jump" id="runJumpBtn" type="button" aria-label="Layout öffnen">
         LAYOUT <span id="runJumpCount">0/0</span>
@@ -620,15 +642,15 @@
 
     <div class="panel-body">
       <div class="panel-tabs">
-        <button class="panel-tab active" data-pane="loadout">🧩 Loadout</button>
+        <button class="panel-tab active" data-pane="möbel">🧩 Möbel</button>
         <button class="panel-tab" data-pane="edit">🎛 Edit</button>
         <button class="panel-tab" data-pane="run">🚀 Layout</button>
       </div>
 
-      <section class="panel-pane active" data-pane-content="loadout">
-        <div class="loadout-note">Setze den kompletten Loadout in MAP 01. Erst wenn alle Items genutzt und gültig platziert sind, wird das Layout freigeschaltet.</div>
+      <section class="panel-pane active" data-pane-content="möbel">
+        <div class="möbel-note">Nutze alle Möbel im Wohnzimmer. Erst wenn alles platziert und gültig steht, kannst du dein Layout veröffentlichen.</div>
         <div class="catalog" id="catalog"></div>
-        <div class="map-rule"><strong>RULE:</strong> Nutze den kompletten Loadout. Rot = ungültiger Move. Locked Zone und Static Props sind tabu.</div>
+        <div class="map-rule"><strong>REGEL:</strong> Nutze alle Möbel. Rot = ungültige Platzierung. Gesperrte Bereiche bleiben tabu.</div>
       </section>
 
       <section class="panel-pane" data-pane-content="edit">
@@ -647,7 +669,7 @@
             <button id="foldBtn" style="display:none">⇲ Deploy</button>
           </div>
           <div class="row">
-            <button id="removeBtn" class="danger">↩ Return to loadout</button>
+            <button id="removeBtn" class="danger">↩ Return to möbel</button>
           </div>
         </div>
 
@@ -685,8 +707,8 @@
           <div class="coach-card" id="coachCard">
             <div class="coach-head">
               <div>
-                <div class="coach-title">✨ ROOM COACH</div>
-                <div class="coach-sub" id="coachBasis">Automatic build check</div>
+                <div class="coach-title">✨ DESIGN CHECK</div>
+                <div class="coach-sub" id="coachBasis">Automatischer Layout-Check</div>
               </div>
               <div class="coach-score"><span id="coachScore">—</span>/100</div>
             </div>
@@ -698,7 +720,7 @@
               <div>Gate zones</div><div id="coachDoors">—</div>
             </div>
             <ul class="coach-notes" id="coachNotes"></ul>
-            <div class="coach-disclaimer">Orientation only · 0 influence on likes, swipe ranking or leaderboard.</div>
+            <div class="coach-disclaimer">Nur Orientierung · 0 Einfluss auf Likes, Swipe-Ranking oder Leaderboard.</div>
           </div>
           <select id="savedLayoutsSelect" aria-label="Saved layouts"><option value="">Saved layouts …</option></select>
           <div class="row" style="margin-bottom:0">
@@ -715,7 +737,7 @@
 <section class="game-screen" id="swipeView">
   <div class="arena swipe-shell">
     <div class="arena-head">
-      <div><h2>🔥 Swipe Arena</h2><p>Left = pass · Right = like. Community-Layouts treten auf derselben Map gegeneinander an.</p></div>
+      <div><h2>🔥 WohnzimmerSwipe</h2><p>Left = pass · Right = like. Swipe dich durch die Layouts der Community und vote für deine Favoriten.</p></div>
       <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
@@ -729,7 +751,7 @@
 <section class="game-screen" id="leaderView">
   <div class="arena">
     <div class="arena-head">
-      <div><h2>🏆 Hall of Layouts</h2><p>Ranking ausschließlich nach Community-Likes. ROOM COACH bleibt komplett getrennt.</p></div>
+      <div><h2>🏆 Lieblingslayouts</h2><p>Ranking ausschließlich nach Community-Likes. Die automatische Bewertung bleibt davon getrennt.</p></div>
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
@@ -788,7 +810,7 @@ const db = getFirestore(firebaseApp);
   const furnitureLayer = document.getElementById('furnitureLayer');
   const catalogEl = document.getElementById('catalog');
   const snapBox = document.getElementById('snap');
-  const buildView = document.getElementById('buildView');
+  const layoutView = document.getElementById('layoutView');
   const swipeView = document.getElementById('swipeView');
   const leaderView = document.getElementById('leaderView');
   const layoutNameEl = document.getElementById('layoutName');
@@ -930,7 +952,7 @@ const db = getFirestore(firebaseApp);
       if(minX < 100){
         const allowed=82 + 1.01*Math.max(0,minX);
         if(def.h > allowed + 0.01){
-          return {ok:false,text:'Zu hoch für LOW ZONE'};
+          return {ok:false,text:'Zu hoch für NIEDRIGE ZONE'};
         }
       }
     }
@@ -1458,7 +1480,7 @@ const db = getFirestore(firebaseApp);
         const minX=Math.min(...verts.map(p=>p.x));
         if(minX<100){
           const allowed=82+1.01*Math.max(0,minX);
-          if(def.h>allowed+0.01) problem='zu hoch unter LOW ZONE';
+          if(def.h>allowed+0.01) problem='zu hoch unter NIEDRIGE ZONE';
         }
       }
 
@@ -1501,7 +1523,7 @@ const db = getFirestore(firebaseApp);
     return Math.max(0,1-Math.abs(a-b)/tolerance);
   }
 
-  function buildAutoReview(layoutItems){
+  function layoutAutoReview(layoutItems){
     const m=layoutMetrics(layoutItems);
     const top=[...communityCache]
       .sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0))
@@ -1697,10 +1719,10 @@ const db = getFirestore(firebaseApp);
 
   function autoRateCurrent(){
     if(!items.length){toast('Setze zuerst Items auf die Map');return null;}
-    const review=buildAutoReview(cloneItems());
+    const review=layoutAutoReview(cloneItems());
     showAutoReview(review);
     celebrateRating(review.score);
-    toast(`ROOM COACH: ${review.score}/100`);
+    toast(`DESIGN CHECK: ${review.score}/100`);
     return review;
   }
 
@@ -1880,7 +1902,7 @@ const db = getFirestore(firebaseApp);
     items=data.items.map((i,idx)=>({...i,id:idx+1}));
     nextId=items.length+1;selectedId=null;
     if(data.title) layoutNameEl.value=data.title;
-    save();renderAll();setView('build');
+    save();renderAll();setView('layout');
     toast('Shared Layout geladen');
   }
   async function copyShare(){
@@ -1890,7 +1912,7 @@ const db = getFirestore(firebaseApp);
   }
   async function nativeShare(){
     const text=document.getElementById('shareCode').value;
-    if(navigator.share){try{await navigator.share({title:layoutNameEl.value||'Room Rush Layout',text});}catch(_){}}
+    if(navigator.share){try{await navigator.share({title:layoutNameEl.value||'WohnzimmerTinder Layout',text});}catch(_){}}
     else copyShare();
   }
   async function publishLayout(){
@@ -1898,7 +1920,7 @@ const db = getFirestore(firebaseApp);
 
     if(!readiness.allUsed){
       toast(`Noch ${readiness.total-readiness.placed} Item${readiness.total-readiness.placed===1?'':'s'} fehlen`);
-      setPanelPane('loadout',true);
+      setPanelPane('möbel',true);
       return;
     }
     if(!readiness.valid){
@@ -1909,7 +1931,7 @@ const db = getFirestore(firebaseApp);
     if(!firebaseUser || !firebaseReady){toast('Firebase verbindet noch – bitte kurz warten');return;}
 
     const title=(layoutNameEl.value||'My Layout').trim().slice(0,40)||'My Layout';
-    const review=buildAutoReview(cloneItems());
+    const review=layoutAutoReview(cloneItems());
     showAutoReview(review);
     celebrateRating(review.score);
 
@@ -1929,7 +1951,7 @@ const db = getFirestore(firebaseApp);
         createdAt:serverTimestamp()
       });
 
-      saveStatusEl.textContent=`🏁 Im Voting · ROOM COACH ${review.score}/100 · Ranking nur nach Likes`;
+      saveStatusEl.textContent=`🏁 Im Voting · DESIGN CHECK ${review.score}/100 · Ranking nur nach Likes`;
       toast('Layout veröffentlicht');
       await refreshCommunity(false);
     }catch(err){
@@ -2057,11 +2079,11 @@ const db = getFirestore(firebaseApp);
 
   function setView(view){
     document.body.dataset.view=view;
-    buildView.style.display=view==='build'?'':'none';
+    layoutView.style.display=view==='layout'?'':'none';
     swipeView.style.display=view==='swipe'?'block':'none';
     leaderView.style.display=view==='leader'?'block':'none';
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-    if(view!=='build') setPanelOpen(false);
+    if(view!=='layout') setPanelOpen(false);
     if(view==='swipe'){refreshCommunity(false);}
     if(view==='leader'){refreshCommunity(false);}
   }
@@ -2107,7 +2129,7 @@ const db = getFirestore(firebaseApp);
     toast('Layout zurückgesetzt');
 
     if(window.matchMedia('(max-width:980px)').matches){
-      setPanelPane('loadout',true);
+      setPanelPane('möbel',true);
     }
   };
   snapBox.addEventListener('change',renderAll);
@@ -2137,7 +2159,7 @@ const db = getFirestore(firebaseApp);
   document.getElementById('likeBtn').onclick=()=>voteSwipe(true);
   document.getElementById('resetSwipeBtn').onclick=()=>refreshCommunity(true);
 
-  document.body.dataset.view='build';
+  document.body.dataset.view='layout';
   load();
   fitMap();
   renderAll();
