@@ -559,8 +559,9 @@
 
         <div class="row">
           <label><input id="snap" type="checkbox" checked> Grid snap</label>
-          <button id="clearBtn">Reset placed items</button>
+          <button id="clearBtn" class="danger">♻ Reset Layout</button>
         </div>
+        <div class="small">Reset löscht nur das aktuell gebaute Layout. Gespeicherte Layouts bleiben erhalten.</div>
         <div class="privacy-note">MAP 01 zeigt keine realen Maßangaben oder persönlichen Raum-Markierungen. Die Geometrie bleibt als Spielkarte konstant.</div>
       </section>
 
@@ -1889,7 +1890,22 @@ const db = getFirestore(firebaseApp);
   document.getElementById('mirrorBtn').onclick=()=>{const i=itemById(selectedId);if(i){i.mirrored=!i.mirrored;save();renderAll();}};
   document.getElementById('foldBtn').onclick=()=>{const i=itemById(selectedId);if(i){i.foldedOut=!i.foldedOut;save();renderAll();}};
   document.getElementById('removeBtn').onclick=()=>{if(selectedId!=null){items=items.filter(i=>i.id!==selectedId);selectedId=null;save();renderAll();}};
-  document.getElementById('clearBtn').onclick=()=>{items=[];selectedId=null;save();renderAll();};
+  document.getElementById('clearBtn').onclick=()=>{
+    const confirmed=window.confirm(
+      'Layout wirklich zurücksetzen?\n\nAlle aktuell platzierten Items werden von der Map entfernt. Gespeicherte Layouts bleiben erhalten.'
+    );
+    if(!confirmed) return;
+
+    items=[];
+    selectedId=null;
+    save();
+    renderAll();
+    toast('Layout zurückgesetzt');
+
+    if(window.matchMedia('(max-width:980px)').matches){
+      setPanelPane('loadout',true);
+    }
+  };
   snapBox.addEventListener('change',renderAll);
 
   window.addEventListener('keydown',e=>{
