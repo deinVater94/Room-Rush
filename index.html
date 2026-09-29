@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Room Rush – Raumplaner & Layout Voting</title>
-<meta name="description" content="Room Rush: Möbel planen, Layouts teilen, swipen und die besten Raumideen ranken." />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes,viewport-fit=cover" />
+<title>Room Rush – Single Map Layout Challenge</title>
+<meta name="description" content="Room Rush: ein Single-Map Layout-Game. Baue einen Run, teile ihn, swipe Community-Builds und erklimme das Ranking." />
 <meta name="theme-color" content="#111827" />
 <style>
   :root{
@@ -94,30 +94,232 @@
   @media(max-width:980px){.leader-grid{grid-template-columns:1fr}.game-header{gap:10px}.hud{order:3;width:100%}.game-tabs{margin-left:auto}.desktop-hint{display:none}.mobile-hint{display:inline}}
   @media(max-width:560px){.game-header{padding:10px 12px}.game-brand{min-width:0;flex:1}.game-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.tab-btn{font-size:11px;padding:8px 5px}.hud-chip{font-size:10px}.game-screen{padding:12px}.swipe-action{width:60px;height:60px}.save-card .row{display:grid;grid-template-columns:1fr 1fr}.save-card .row button:last-child{grid-column:1/-1}}
 
+
+  /* --- V3: app-like build screen, zoom/pan and privacy-first presentation --- */
+  .stage-badge{
+    position:absolute;left:18px;top:16px;z-index:7;
+    display:flex;align-items:center;gap:8px;
+    padding:7px 10px;border-radius:12px;
+    background:rgba(15,23,42,.88);color:#fff;
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 8px 22px rgba(15,23,42,.16);
+    font-size:10px;font-weight:900;letter-spacing:.10em;
+    backdrop-filter:blur(8px)
+  }
+  .stage-wrap:before{display:none}
+  .zoom-controls{
+    position:absolute;right:14px;top:14px;z-index:8;
+    display:flex;flex-direction:column;gap:7px;
+  }
+  .zoom-controls button{
+    width:44px;height:44px;padding:0;border-radius:13px;
+    background:rgba(255,255,255,.94);border:1px solid #dbe3ef;
+    box-shadow:0 7px 20px rgba(15,23,42,.12);
+    font-size:18px;font-weight:900;color:#1e293b;
+    backdrop-filter:blur(8px)
+  }
+  .zoom-readout{
+    width:44px;text-align:center;font-size:9px;font-weight:900;
+    color:#475569;background:rgba(255,255,255,.9);
+    border:1px solid #e2e8f0;border-radius:9px;padding:4px 2px
+  }
+  .quick-actions{
+    display:none;position:absolute;left:50%;bottom:18px;z-index:11;
+    transform:translateX(-50%);align-items:center;gap:7px;
+    padding:7px;background:rgba(15,23,42,.92);color:#fff;
+    border:1px solid rgba(255,255,255,.13);border-radius:16px;
+    box-shadow:0 12px 30px rgba(15,23,42,.25);backdrop-filter:blur(10px)
+  }
+  .quick-actions.show{display:flex}
+  .quick-actions .quick-name{
+    max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-size:11px;font-weight:850;padding:0 5px
+  }
+  .quick-actions button{
+    min-width:42px;height:40px;padding:0 9px;border-radius:11px;
+    background:#273244;color:#fff;border-color:#475569
+  }
+  .quick-actions button.primary{background:#4f46e5;border-color:#4f46e5}
+  .panel-sheet-head{display:none}
+  .panel-body{min-height:0}
+  .panel-tabs{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+    padding:4px;margin-bottom:12px;background:#f1f5f9;border-radius:12px
+  }
+  .panel-tab{
+    border:0;background:transparent;color:#64748b;padding:8px 5px;
+    border-radius:9px;font-size:11px;font-weight:850
+  }
+  .panel-tab.active{background:#fff;color:#111827;box-shadow:0 3px 10px rgba(15,23,42,.08)}
+  .panel-pane{display:none}
+  .panel-pane.active{display:block}
+  .loadout-note{
+    font-size:11px;color:#64748b;line-height:1.45;margin:2px 0 10px;
+  }
+  .map-rule{
+    display:flex;align-items:center;gap:8px;
+    padding:9px 10px;border:1px solid #e2e8f0;border-radius:12px;
+    background:#f8fafc;color:#475569;font-size:11px;margin-top:10px
+  }
+  .catalog-sub{letter-spacing:.02em}
+  .panel .save-card{margin-bottom:0}
+  .selected-empty{
+    padding:24px 12px;text-align:center;border:1px dashed #cbd5e1;
+    border-radius:14px;color:#64748b;font-size:12px
+  }
+  .edit-status{
+    display:grid;grid-template-columns:1fr auto;gap:6px 10px;
+    padding:10px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;
+    font-size:12px;margin:10px 0
+  }
+  .edit-status div:nth-child(odd){color:#64748b}
+  .privacy-note{
+    font-size:10px;color:#64748b;line-height:1.45;margin-top:10px;
+  }
+
+  @media(max-width:980px){
+    html,body{height:100%;overscroll-behavior:none}
+    body[data-view="build"]{overflow:hidden}
+    .game-header{
+      position:fixed;top:0;left:0;right:0;height:56px;z-index:90;
+      padding:8px 10px;gap:8px;flex-wrap:nowrap;
+      padding-top:max(8px,env(safe-area-inset-top));
+    }
+    .game-logo{width:34px;height:34px;border-radius:10px}
+    .game-brand{min-width:0;flex:1}.game-brand strong{font-size:14px}.game-brand span{display:none}
+    .hud{flex:0 0 auto;order:initial;width:auto;gap:5px}
+    .hud-chip{display:none;padding:5px 7px;font-size:9px}
+    .hud-chip:nth-child(3),.hud-chip:nth-child(4){display:block}
+    .game-subhead{display:none}
+
+    .game-tabs{
+      position:fixed;left:0;right:0;bottom:0;z-index:95;
+      width:auto;margin:0;display:grid;grid-template-columns:repeat(3,1fr);
+      gap:6px;padding:7px 9px calc(7px + env(safe-area-inset-bottom));
+      background:rgba(15,23,42,.96);border-top:1px solid #334155;
+      box-shadow:0 -8px 24px rgba(15,23,42,.18);
+      backdrop-filter:blur(12px)
+    }
+    .tab-btn{
+      height:46px;border:0;border-radius:13px;background:#1e293b;color:#cbd5e1;
+      font-size:11px;padding:5px
+    }
+    .tab-btn.active{background:#fff;color:#111827}
+
+    .app{
+      position:fixed;left:0;right:0;top:56px;
+      bottom:calc(60px + env(safe-area-inset-bottom));
+      padding:0;display:block;min-height:0;height:auto;
+    }
+    .stage-wrap{
+      position:absolute;inset:0;min-height:0;height:auto;padding:0;
+      border:0;border-radius:0;overflow:hidden;box-shadow:none;background:#eef2f7;
+    }
+    #plan{width:100%;height:100%;display:block}
+    .stage-badge{left:10px;top:10px;padding:6px 8px;font-size:9px}
+    .zoom-controls{right:10px;top:10px}
+    .zoom-controls button{width:46px;height:46px}
+    .zoom-readout{width:46px}
+    .quick-actions{
+      position:fixed;left:50%;bottom:calc(124px + env(safe-area-inset-bottom));
+      max-width:calc(100vw - 20px)
+    }
+    body.sheet-open .quick-actions{display:none!important}
+
+    .panel{
+      position:fixed;left:8px;right:8px;bottom:calc(68px + env(safe-area-inset-bottom));
+      z-index:88;width:auto;max-height:min(66dvh,620px);
+      padding:0;border-radius:20px;overflow:hidden;
+      transform:translateY(calc(100% - 54px));
+      transition:transform .22s cubic-bezier(.2,.8,.2,1);
+      box-shadow:0 18px 50px rgba(15,23,42,.28);
+      background:rgba(255,255,255,.98);backdrop-filter:blur(14px)
+    }
+    .panel.open{transform:translateY(0)}
+    .panel-sheet-head{
+      height:54px;display:flex;align-items:center;justify-content:space-between;
+      padding:0 12px;cursor:pointer;border-bottom:1px solid #e2e8f0;
+      background:linear-gradient(180deg,#fff,#f8fafc)
+    }
+    .sheet-handle{width:38px;height:4px;background:#cbd5e1;border-radius:999px;position:absolute;left:50%;top:6px;transform:translateX(-50%)}
+    .sheet-title{font-size:12px;font-weight:900;letter-spacing:.06em;color:#334155}
+    .sheet-meta{font-size:10px;color:#64748b}
+    .panel-body{
+      max-height:calc(min(66dvh,620px) - 54px);overflow:auto;
+      padding:10px 10px calc(14px + env(safe-area-inset-bottom));
+      -webkit-overflow-scrolling:touch
+    }
+    .panel-tabs{position:sticky;top:0;z-index:2;background:#eef2f7;padding:4px;margin:0 0 10px}
+    .catalog{grid-template-columns:1fr 1fr;gap:7px}
+    .catalog-item{padding:9px;display:block}
+    .catalog-item>div:last-child{display:flex;justify-content:space-between;align-items:center;margin-top:7px}
+    .catalog-item button{width:100%;padding:8px 6px}
+    .catalog-title{font-size:12px}
+    .catalog-sub{font-size:10px}
+    .count{display:none}
+    .save-card{border-radius:13px;box-shadow:none}
+    .save-card .row{display:grid;grid-template-columns:1fr 1fr}
+    .save-card .row button{width:100%}
+    .save-card .row button:last-child{grid-column:auto}
+    .hint,.note{font-size:11px}
+
+    .game-screen{
+      min-height:100dvh;padding:76px 12px calc(82px + env(safe-area-inset-bottom));
+    }
+    .arena h2{font-size:22px}
+    .leader-grid{grid-template-columns:1fr}
+    .swipe-shell{max-width:100%}
+    .swipe-card{border-radius:20px}
+    .swipe-actions{
+      position:sticky;bottom:calc(70px + env(safe-area-inset-bottom));
+      z-index:5;margin-top:12px
+    }
+  }
+
+  @media(min-width:981px){
+    .quick-actions{display:none!important}
+    .panel{display:block}
+    .panel-body{display:block}
+    .panel-tabs{margin-top:0}
+  }
+
 </style>
 </head>
 <body>
 <div class="game-header">
   <div class="game-brand">
     <div class="game-logo">🛋️</div>
-    <div><strong>ROOM RUSH</strong><span>layout challenge</span></div>
+    <div><strong>ROOM RUSH</strong><span>single-map challenge</span></div>
   </div>
   <div class="hud">
-    <div class="hud-chip">🧩 Möbel <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
-    <div class="hud-chip">✅ Plan <b id="hudValidity">bereit</b></div>
-    <div class="hud-chip">🔥 Community <b id="hudCommunity">0</b></div>
+    <div class="hud-chip">🧩 Placed <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
+    <div class="hud-chip">⚡ Build <b id="hudValidity">bereit</b></div>
+    <div class="hud-chip">🔥 Runs <b id="hudCommunity">0</b></div>
     <div class="hud-chip">☁️ Firebase <b id="hudCloud">verbinde…</b></div>
   </div>
   <nav class="game-tabs">
-    <button class="tab-btn active" data-view="build">🛠 Bauen</button>
-    <button class="tab-btn" data-view="swipe">🔥 Bewerten</button>
-    <button class="tab-btn" data-view="leader">🏆 Top 3</button>
+    <button class="tab-btn active" data-view="build">🛠 Build</button>
+    <button class="tab-btn" data-view="swipe">🔥 Swipe</button>
+    <button class="tab-btn" data-view="leader">🏆 Top</button>
   </nav>
 </div>
-<div class="game-subhead">Plane deinen Raum, sichere Varianten und lass Layouts gegeneinander antreten.</div>
+<div class="game-subhead">MAP 01 · Ein Loadout, eine Arena, unendlich viele Builds.</div>
 
 <div class="app" id="buildView">
   <div class="stage-wrap">
+    <div class="stage-badge">MAP 01 // LOFTLINE</div>
+    <div class="zoom-controls" aria-label="Map zoom">
+      <button id="zoomInBtn" title="Zoom in">＋</button>
+      <div class="zoom-readout" id="zoomReadout">100%</div>
+      <button id="zoomOutBtn" title="Zoom out">−</button>
+      <button id="zoomFitBtn" title="Map einpassen">⌂</button>
+    </div>
+    <div class="quick-actions" id="quickActions">
+      <span class="quick-name" id="quickName">Item</span>
+      <button id="quickRotL" title="Links drehen">↺</button>
+      <button id="quickRotR" title="Rechts drehen">↻</button>
+      <button id="quickEdit" class="primary">EDIT</button>
+    </div>
     <svg id="plan" viewBox="-70 -70 920 585" aria-label="Interaktiver Grundriss">
       <defs>
         <pattern id="smallGrid" width="25" height="25" patternUnits="userSpaceOnUse">
@@ -132,200 +334,176 @@
         </filter>
       </defs>
 
-      <rect x="-70" y="-70" width="920" height="585" fill="url(#grid)"/>
+      <rect id="worldBackground" x="-70" y="-70" width="920" height="585" fill="url(#grid)"/>
 
       <path id="roomFill"
         d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
         fill="#fff" stroke="none"/>
 
-      <!-- Dachschräge: Höhe linear aus den beiden Messpunkten -->
+      <!-- LOW ZONE: fixed gameplay height restriction -->
       <g>
         <rect x="0" y="0" width="100" height="465" fill="var(--roofFill)"/>
         <path d="M100 0L100 465" stroke="var(--roof)" stroke-width="2" stroke-dasharray="8 6"/>
-        <text x="12" y="26" fill="var(--roof)" font-size="12" font-weight="800">Dachschräge</text>
-        <text x="12" y="44" fill="var(--roof)" font-size="10">0 cm: 82 cm hoch</text>
-        <text x="12" y="59" fill="var(--roof)" font-size="10">100 cm: 183 cm hoch</text>
+        <text x="12" y="29" fill="var(--roof)" font-size="12" font-weight="900">LOW ZONE</text>
+        <text x="12" y="46" fill="var(--roof)" font-size="9">HEIGHT LIMIT</text>
       </g>
 
-      <!-- Küche komplett fest -->
+      <!-- Static locked gameplay zone -->
       <g>
         <rect x="498" y="0" width="285" height="251" fill="var(--kitchenFill)" stroke="var(--kitchen)" stroke-width="2.5" stroke-dasharray="10 7"/>
-        <text x="640" y="108" text-anchor="middle" fill="#047857" font-size="17" font-weight="900">KÜCHE FEST</text>
-        <text x="640" y="128" text-anchor="middle" fill="#047857" font-size="11">keine neue Möblierung</text>
-        <!-- Küchenzeile -->
+        <text x="640" y="108" text-anchor="middle" fill="#047857" font-size="17" font-weight="900">LOCKED ZONE</text>
+        <text x="640" y="128" text-anchor="middle" fill="#047857" font-size="11">STATIC MAP AREA</text>
+        <!-- STATIC PROP -->
         <rect x="506" y="0" width="277" height="67" fill="rgba(16,185,129,.18)" stroke="var(--kitchen)" stroke-width="2"/>
-        <text x="645" y="40" text-anchor="middle" fill="#047857" font-size="12" font-weight="800">Küchenzeile</text>
+        <text x="645" y="40" text-anchor="middle" fill="#047857" font-size="12" font-weight="800">STATIC PROP</text>
         <!-- Tisch + Stühle -->
         <rect x="713" y="181" width="60" height="60" fill="rgba(245,158,11,.13)" stroke="#b45309" stroke-width="2"/>
         <rect x="718" y="131" width="50" height="45" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2"/>
         <rect x="663" y="186" width="45" height="50" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2"/>
-        <text x="743" y="215" text-anchor="middle" fill="#92400e" font-size="10" font-weight="700">60×60</text>
+        <text x="743" y="215" text-anchor="middle" fill="#92400e" font-size="10" font-weight="700">PROP</text>
       </g>
 
-      <!-- Fahrräder: Positionen anhand Abstand zum Punkt B -->
+      <!-- Static map props -->
       <g>
         <g transform="translate(353 50)">
           <rect x="-15" y="-50" width="30" height="100" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
           <circle cx="-8" cy="-28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <circle cx="8" cy="28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <path d="M-8-28L7-8L-2 10L8 28" fill="none" stroke="#b45309" stroke-width="2"/>
-          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">Rad 1</text>
+          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">BIKE A</text>
         </g>
         <g transform="translate(296 50)">
           <rect x="-15" y="-50" width="30" height="100" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
           <circle cx="-8" cy="-28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <circle cx="8" cy="28" r="7" fill="none" stroke="#b45309" stroke-width="2"/>
           <path d="M-8-28L7-8L-2 10L8 28" fill="none" stroke="#b45309" stroke-width="2"/>
-          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">Rad 2</text>
+          <text x="21" y="2" fill="#92400e" font-size="10" font-weight="800">BIKE B</text>
         </g>
       </g>
 
-      <!-- Routerecke fest in Ecke J:
-           angenommen 49 cm entlang J–I, 25 cm in den Raum, 37 cm hoch -->
+      <!-- Static corner prop -->
       <g id="routerCorner">
         <rect x="0" y="440" width="49" height="25"
               fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
         <text x="24.5" y="436" text-anchor="middle"
-              fill="#92400e" font-size="10" font-weight="800">Router</text>
+              fill="#92400e" font-size="10" font-weight="800">FIXED</text>
       </g>
 
-      <!-- Fernseher, wandhängend -->
+      <!-- Static media prop -->
       <g>
         <rect x="128" y="451" width="123" height="8" fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.2"/>
-        <text x="189.5" y="438" text-anchor="middle" fill="#92400e" font-size="11" font-weight="800">TV · UK 1,10 m</text>
+        <text x="189.5" y="438" text-anchor="middle" fill="#92400e" font-size="11" font-weight="800">MEDIA</text>
       </g>
 
-      <!-- Wände mit Türöffnungen -->
+      <!-- Arena boundary with gates -->
       <g fill="none" stroke="#111827" stroke-width="7" stroke-linecap="square" stroke-linejoin="round">
         <path d="M0 0L382 0"/><path d="M478 0L496 0"/>
         <path d="M496 0L496 67L506 67L506 0L783 0L783 251L498 251L498 465"/>
         <path d="M498 465L408 465"/><path d="M298 465L0 465L0 0"/>
       </g>
 
-      <!-- obere Tür -->
+      <!-- Gate A -->
       <g fill="none" stroke="#2563eb" stroke-width="3">
         <path d="M382-8L382 8"/><path d="M478-8L478 8"/>
         <path d="M382 0L382 86"/>
         <path d="M468 0A86 86 0 0 1 382 86" stroke-dasharray="5 4"/>
       </g>
 
-      <!-- Fenstertür -->
+      <!-- Gate B -->
       <g fill="none" stroke="var(--door)" stroke-width="3">
         <path d="M298 457L298 473"/><path d="M408 457L408 473"/>
         <path d="M298 465L298 365"/><path d="M304 459L304 371" stroke-width="1.5"/>
         <path d="M398 465A100 100 0 0 0 298 365" stroke-dasharray="5 4"/>
       </g>
 
-      <!-- Punkte -->
-      <g font-size="13" font-weight="800" fill="#374151">
-        <text x="-20" y="-12">A</text><text x="482" y="-12">B</text>
-        <text x="474" y="82">C</text><text x="510" y="82">D</text>
-        <text x="512" y="-12">E</text><text x="788" y="-12">F</text>
-        <text x="790" y="260">G</text><text x="476" y="244">H</text>
-        <text x="505" y="470">I</text><text x="-20" y="472">J</text>
-      </g>
-
-      <!-- dynamische Möbel -->
+      <!-- dynamische Items -->
       <g id="furnitureLayer"></g>
     </svg>
   </div>
 
-  <aside class="panel">
-    <div class="save-card">
-      <div class="save-card-title"><span>🎮 Dein Layout</span><span class="tiny">FIREBASE MVP</span></div>
-      <input id="layoutName" value="Mein Layout" maxlength="40" aria-label="Layoutname">
-      <div class="row">
-        <button id="saveLayoutBtn">💾 Sichern</button>
-        <button id="shareLayoutBtn">🔗 Teilen</button>
-        <button id="autoRateBtn">✨ Bewerten</button>
-        <button id="publishLayoutBtn" class="primary">🏁 Ins Voting</button>
+  <aside class="panel" id="toolPanel">
+    <div class="panel-sheet-head" id="panelToggle" role="button" tabindex="0" aria-label="Loadout öffnen oder schließen">
+      <span class="sheet-handle"></span>
+      <span class="sheet-title">🎒 LOADOUT</span>
+      <span class="sheet-meta" id="sheetMeta">tap to open</span>
+    </div>
+
+    <div class="panel-body">
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-pane="loadout">🧩 Loadout</button>
+        <button class="panel-tab" data-pane="edit">🎛 Edit</button>
+        <button class="panel-tab" data-pane="run">🚀 Run</button>
       </div>
-      <div class="save-status" id="saveStatus"></div>
-      <div class="coach-card" id="coachCard">
-        <div class="coach-head">
-          <div>
-            <div class="coach-title">✨ ROOM COACH</div>
-            <div class="coach-sub" id="coachBasis">Automatische Layout-Prüfung</div>
+
+      <section class="panel-pane active" data-pane-content="loadout">
+        <div class="loadout-note">Setze Items in MAP 01. Größen werden absichtlich nur als Game-Klassen angezeigt.</div>
+        <div class="catalog" id="catalog"></div>
+        <div class="map-rule"><strong>RULE:</strong> Rot = ungültiger Move. Locked Zone und Static Props sind tabu.</div>
+      </section>
+
+      <section class="panel-pane" data-pane-content="edit">
+        <div id="noneSelected" class="selected-empty">Wähle ein Item auf der Map aus.</div>
+        <div id="selectedPanel" style="display:none">
+          <div class="selected-title" id="selName"></div>
+          <div class="edit-status">
+            <div>Class</div><div class="value" id="selClass">—</div>
+            <div>Rotation</div><div class="value" id="selR">—</div>
+            <div>Move</div><div class="value" id="selStatus">—</div>
           </div>
-          <div class="coach-score"><span id="coachScore">—</span>/100</div>
+          <div class="row">
+            <button id="rotL" class="primary">↺ Rotate</button>
+            <button id="rotR" class="primary">↻ Rotate</button>
+            <button id="mirrorBtn" style="display:none">⇄ Mirror L</button>
+            <button id="foldBtn" style="display:none">⇲ Deploy</button>
+          </div>
+          <div class="row">
+            <button id="removeBtn" class="danger">↩ Return to loadout</button>
+          </div>
         </div>
-        <div class="coach-bar"><span id="coachBar"></span></div>
-        <div class="coach-grid">
-          <div>Möbel</div><div id="coachItems">—</div>
-          <div>Belegungsgrad</div><div id="coachCoverage">—</div>
-          <div>Top-5-Vergleich</div><div id="coachBenchmark">—</div>
-          <div>Türbereiche</div><div id="coachDoors">—</div>
+
+        <div class="row">
+          <label><input id="snap" type="checkbox" checked> Grid snap</label>
+          <button id="clearBtn">Reset placed items</button>
         </div>
-        <ul class="coach-notes" id="coachNotes"></ul>
-        <div class="coach-disclaimer">Nur Orientierung · 0 Einfluss auf Likes, Tinder-Ranking oder Leaderboard.</div>
-      </div>
-      <select id="savedLayoutsSelect" aria-label="Gespeicherte Layouts"><option value="">Gespeicherte Layouts …</option></select>
-      <div class="row" style="margin-bottom:0">
-        <button id="loadSavedBtn">↩ Laden</button>
-        <button id="deleteSavedBtn">🗑 Löschen</button>
-      </div>
-    </div>
+        <div class="privacy-note">MAP 01 zeigt keine realen Maßangaben oder persönlichen Raum-Markierungen. Die Geometrie bleibt als Spielkarte konstant.</div>
+      </section>
 
-    <h2>Möbelbestand</h2>
-    <div class="catalog" id="catalog"></div>
-
-    <h3>Ausgewähltes Möbel</h3>
-    <div id="noneSelected" class="small">Klicke ein Möbel im Grundriss an.</div>
-    <div id="selectedPanel" style="display:none">
-      <div class="selected-title" id="selName"></div>
-      <div class="kv">
-        <div>Grundfläche</div><div class="value" id="selSize">—</div>
-        <div>Höhe</div><div class="value" id="selHeight">—</div>
-        <div>X</div><div class="value" id="selX">—</div>
-        <div>Y</div><div class="value" id="selY">—</div>
-        <div>Drehung</div><div class="value" id="selR">—</div>
-        <div>Status</div><div class="value" id="selStatus">—</div>
-      </div>
-      <div class="row">
-        <button id="rotL" class="primary">↺ 15° drehen</button>
-        <button id="rotR" class="primary">↻ 15° drehen</button>
-        <button id="mirrorBtn" style="display:none">L spiegeln</button>
-        <button id="foldBtn" style="display:none">Ausklappen</button>
-      </div>
-      <div class="row">
-        <button id="removeBtn" class="danger">Zurück in Bestand</button>
-      </div>
-    </div>
-
-    <h3>Planung</h3>
-    <div class="row">
-      <label><input id="snap" type="checkbox" checked> 5-cm-Raster</label>
-      <button id="clearBtn">Bewegliche Möbel leeren</button>
-    </div>
-    <div class="row">
-      <span class="pill p-fixed">orange = fest</span>
-      <span class="pill p-kitchen">grün = Küche gesperrt</span>
-      <span class="pill p-roof">lila = Dachschräge</span>
-    </div>
-
-    <div class="hint">
-      Möbel werden per Klick aus dem Bestand in die Raummitte gesetzt.
-      <strong>Einmal anklicken/antippen reicht jetzt zur Auswahl</strong> – die Eigenschaften bleiben sichtbar, bis du ein anderes Möbel oder eine freie Stelle auswählst.
-      Zum Drehen: <strong>PC:</strong> ↺/↻ oder Q/E. <strong>Handy:</strong> ↺/↻ unter „Ausgewähltes Möbel“.
-      Rot bedeutet Kollision, außerhalb des Raums oder zu wenig Höhe unter der Dachschräge.
-    </div>
-
-    <div class="note">
-      <strong>Noch offen:</strong> Beim PC-Setup fehlen die Grundmaße des PC-Gehäuses.
-      Tischlampe (Ø20×30 cm) und Drucker (41×35×20 cm) führe ich als Aufstellgeräte und nicht als eigene Bodenmöbel.
-      Die Routerecke ist jetzt fest in J eingetragen (49 cm entlang J–I, 25 cm in den Raum).
-    </div>
-
-    <h3>Feste Messwerte</h3>
-    <div class="kv">
-      <div>Fahrradhalter 1 → B</div><div class="value">1,43 m</div>
-      <div>Fahrradhalter 2 → B</div><div class="value">2,00 m</div>
-      <div>Fahrräder in Raum</div><div class="value">ca. 1,00 m</div>
-      <div>TV ab I³</div><div class="value">0,47–1,70 m</div>
-      <div>TV Unterkante</div><div class="value">1,10 m</div>
-      <div>Routerecke J</div><div class="value">49×25×37 cm</div>
-      <div>Dachschräge an A–J</div><div class="value">0,82 m</div>
-      <div>bei 1 m Wandabstand</div><div class="value">1,83 m</div>
+      <section class="panel-pane" data-pane-content="run">
+        <div class="save-card">
+          <div class="save-card-title"><span>🎮 Run Control</span><span class="tiny">MAP 01</span></div>
+          <input id="layoutName" value="My Run" maxlength="40" aria-label="Run name">
+          <div class="row">
+            <button id="saveLayoutBtn">💾 Save</button>
+            <button id="shareLayoutBtn">🔗 Share</button>
+            <button id="autoRateBtn">✨ Coach</button>
+            <button id="publishLayoutBtn" class="primary">🏁 Publish</button>
+          </div>
+          <div class="save-status" id="saveStatus"></div>
+          <div class="coach-card" id="coachCard">
+            <div class="coach-head">
+              <div>
+                <div class="coach-title">✨ ROOM COACH</div>
+                <div class="coach-sub" id="coachBasis">Automatic build check</div>
+              </div>
+              <div class="coach-score"><span id="coachScore">—</span>/100</div>
+            </div>
+            <div class="coach-bar"><span id="coachBar"></span></div>
+            <div class="coach-grid">
+              <div>Items</div><div id="coachItems">—</div>
+              <div>Space use</div><div id="coachCoverage">—</div>
+              <div>Top-5 compare</div><div id="coachBenchmark">—</div>
+              <div>Gate zones</div><div id="coachDoors">—</div>
+            </div>
+            <ul class="coach-notes" id="coachNotes"></ul>
+            <div class="coach-disclaimer">Orientation only · 0 influence on likes, swipe ranking or leaderboard.</div>
+          </div>
+          <select id="savedLayoutsSelect" aria-label="Saved runs"><option value="">Saved runs …</option></select>
+          <div class="row" style="margin-bottom:0">
+            <button id="loadSavedBtn">↩ Load</button>
+            <button id="deleteSavedBtn">🗑 Delete</button>
+          </div>
+        </div>
+      </section>
     </div>
   </aside>
 </div>
@@ -334,7 +512,7 @@
 <section class="game-screen" id="swipeView">
   <div class="arena swipe-shell">
     <div class="arena-head">
-      <div><h2>🔥 Swipe Arena</h2><p>Links = weiter · Rechts = gefällt mir. Auf Handy kannst du die Karte direkt swipen.</p></div>
+      <div><h2>🔥 Swipe Arena</h2><p>Left = pass · Right = like. Community-Runs treten auf derselben Map gegeneinander an.</p></div>
       <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
@@ -348,7 +526,7 @@
 <section class="game-screen" id="leaderView">
   <div class="arena">
     <div class="arena-head">
-      <div><h2>🏆 Hall of Room</h2><p>Ranking ausschließlich nach echten Community-Likes. Die automatische ROOM-COACH-Bewertung hat darauf keinen Einfluss.</p></div>
+      <div><h2>🏆 Hall of Runs</h2><p>Ranking ausschließlich nach Community-Likes. ROOM COACH bleibt komplett getrennt.</p></div>
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
@@ -359,7 +537,7 @@
 <div class="modal-backdrop" id="shareModal">
   <div class="modal">
     <h3>🔗 Layout teilen</h3>
-    <p id="shareHelp">Der Layout-Code enthält nur die Positionen deiner beweglichen Möbel. Er kann auf einem anderen Gerät in derselben App importiert werden.</p>
+    <p id="shareHelp">Der Run-Code enthält nur den Build-Zustand von MAP 01 und kann auf einem anderen Gerät importiert werden.</p>
     <textarea class="share-code" id="shareCode" spellcheck="false"></textarea>
     <div class="row">
       <button id="copyShareBtn" class="primary">Code kopieren</button>
@@ -402,7 +580,6 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 
 (() => {
-  const SCALE = 100; // 100 SVG px = 1 m
   const svg = document.getElementById('plan');
   const roomFill = document.getElementById('roomFill');
   const furnitureLayer = document.getElementById('furnitureLayer');
@@ -415,22 +592,22 @@ const db = getFirestore(firebaseApp);
   const saveStatusEl = document.getElementById('saveStatus');
 
   const defs = {
-    chair: {name:'Vierbein-Stuhl', count:2, w:38, d:38, h:null, heightLabel:'Sitz 46 cm; Gesamthöhe fehlt', kind:'rect'},
-    office: {name:'Bürostuhl', count:1, w:60, d:60, h:100, kind:'circle'},
-    desk270: {name:'Tisch 270×60', count:1, w:270, d:60, h:80, kind:'rect'},
-    table90: {name:'Tisch 90×55', count:1, w:90, d:55, h:45, kind:'rect'},
-    floorlamp: {name:'Stehlampe', count:2, w:30, d:30, h:140, kind:'circle', sizeLabel:'Ø 30 cm'},
-    lsofa: {name:'L-Couch', count:1, w:217, d:80, h:60, kind:'lshape', sizeLabel:'217×80 + L 65×65 cm'},
-    sofabed: {name:'Ausklappcouch', count:1, w:190, d:120, h:80, kind:'sofabed', sizeLabel:'190×120 cm; Ausklappfläche 140×65'},
-    rolltable: {name:'Rolltisch', count:1, w:40, d:40, h:35, kind:'rect'},
-    jibomat: {name:'Jibomat', count:1, w:30, d:21, h:45, kind:'rect'}
+    chair: {name:'Chair', gameClass:'S', role:'Seat', count:2, w:38, d:38, h:null, kind:'rect'},
+    office: {name:'Task Chair', gameClass:'M', role:'Seat', count:1, w:60, d:60, h:100, kind:'circle'},
+    desk270: {name:'Long Desk', gameClass:'XL', role:'Work', count:1, w:270, d:60, h:80, kind:'rect'},
+    table90: {name:'Low Table', gameClass:'M', role:'Surface', count:1, w:90, d:55, h:45, kind:'rect'},
+    floorlamp: {name:'Floor Light', gameClass:'S', role:'Light', count:2, w:30, d:30, h:140, kind:'circle'},
+    lsofa: {name:'Corner Sofa', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape'},
+    sofabed: {name:'Sleeper Sofa', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed'},
+    rolltable: {name:'Utility Cart', gameClass:'S', role:'Utility', count:1, w:40, d:40, h:35, kind:'rect'},
+    jibomat: {name:'Utility Unit', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect'}
   };
 
   const fixedObstacles = [
-    {name:'Küche', polys:[rectPoly(498,0,285,251)]},
-    {name:'Fahrrad 1', polys:[rectPoly(338,0,30,100)]},
-    {name:'Fahrrad 2', polys:[rectPoly(281,0,30,100)]},
-    {name:'Routerecke', polys:[rectPoly(0,440,49,25)]}
+    {name:'Locked Zone', polys:[rectPoly(498,0,285,251)]},
+    {name:'Bike A', polys:[rectPoly(338,0,30,100)]},
+    {name:'Bike B', polys:[rectPoly(281,0,30,100)]},
+    {name:'Fixed Prop', polys:[rectPoly(0,440,49,25)]}
   ];
 
   let items = [];
@@ -465,7 +642,7 @@ const db = getFirestore(firebaseApp);
       return [circlePoly(0,0,w/2)];
     }
     if(def.kind==='lshape'){
-      // main body + 65x65 extension beyond the 80 cm depth, on left or right
+      // Main body plus reversible corner extension
       const main=rectPoly(-w/2,-d/2,w,d);
       const extW=65, extD=65;
       const extX=item.mirrored ? (w/2-extW) : (-w/2);
@@ -475,7 +652,7 @@ const db = getFirestore(firebaseApp);
     if(def.kind==='sofabed'){
       const base=rectPoly(-w/2,-d/2,w,d);
       if(item.foldedOut){
-        // fold-out zone centered, 140 cm wide, extends 65 cm forward
+        // Deployable sleeper extension
         const ext=rectPoly(-70,d/2,140,65);
         return [base,ext];
       }
@@ -530,17 +707,17 @@ const db = getFirestore(firebaseApp);
     const verts=allVertices(polys);
 
     if(!verts.every(p=>pointInRoom(p.x,p.y))){
-      return {ok:false,text:'außerhalb des Raums'};
+      return {ok:false,text:'Out of bounds'};
     }
 
     for(const f of fixedObstacles){
-      if(polysOverlap(polys,f.polys)) return {ok:false,text:'Kollision mit '+f.name};
+      if(polysOverlap(polys,f.polys)) return {ok:false,text:'Blocked by '+f.name};
     }
 
     for(const other of items){
       if(other.id===item.id) continue;
       if(polysOverlap(polys,worldPolys(other))){
-        return {ok:false,text:'Kollision mit '+defs[other.type].name};
+        return {ok:false,text:'Item collision'};
       }
     }
 
@@ -548,13 +725,13 @@ const db = getFirestore(firebaseApp);
     if(def.h!=null){
       const minX=Math.min(...verts.map(p=>p.x));
       if(minX < 100){
-        const allowed=82 + 1.01*Math.max(0,minX); // cm
+        const allowed=82 + 1.01*Math.max(0,minX);
         if(def.h > allowed + 0.01){
-          return {ok:false,text:`Dachschräge: nur ${Math.round(allowed)} cm Höhe`};
+          return {ok:false,text:'Zu hoch für LOW ZONE'};
         }
       }
     }
-    return {ok:true,text:def.h==null?'frei · Höhe noch ungeprüft':'frei'};
+    return {ok:true,text:'valid'};
   }
 
   function svgPoint(evt){
@@ -570,6 +747,7 @@ const db = getFirestore(firebaseApp);
     items.push({id,type,x:245+(used*15),y:250+(used*15),r:0,mirrored:false,foldedOut:false});
     selectedId=id;
     save(); renderAll();
+    if(window.matchMedia('(max-width:980px)').matches) setPanelOpen(false);
   }
 
   function itemById(id){return items.find(i=>i.id===id)}
@@ -582,12 +760,11 @@ const db = getFirestore(firebaseApp);
       const el=document.createElement('div');
       el.className='catalog-item';
       const info=document.createElement('div');
-      const hLabel=def.heightLabel || `${def.h} cm hoch`;
       info.innerHTML=`<div class="catalog-title">${def.name}</div>
-        <div class="catalog-sub">${def.sizeLabel || `${def.w}×${def.d} cm`} · ${hLabel}</div>`;
+        <div class="catalog-sub">CLASS ${def.gameClass} · ${def.role}</div>`;
       const act=document.createElement('div');
       const btn=document.createElement('button');
-      btn.textContent='+ setzen';
+      btn.textContent=left>0?'＋ ADD':'USED';
       btn.disabled=left<=0;
       btn.onclick=()=>spawn(key);
       act.innerHTML=`<span class="count">${left}/${def.count}</span>`;
@@ -626,7 +803,7 @@ const db = getFirestore(firebaseApp);
       g.appendChild(rect(extX,def.d/2,65,65));
     } else if(def.kind==='sofabed'){
       g.appendChild(rect(-def.w/2,-def.d/2,def.w,def.d,8));
-      // armrests, 20 cm wide
+      // Sofa side sections
       g.appendChild(rect(-def.w/2,-def.d/2,20,def.d,4));
       g.appendChild(rect(def.w/2-20,-def.d/2,20,def.d,4));
       if(item.foldedOut){
@@ -711,26 +888,202 @@ const db = getFirestore(firebaseApp);
   function renderSelected(){
     const none=document.getElementById('noneSelected');
     const panel=document.getElementById('selectedPanel');
+    const quick=document.getElementById('quickActions');
     const item=itemById(selectedId);
-    if(!item){none.style.display='block';panel.style.display='none';return;}
-    none.style.display='none';panel.style.display='block';
-    const def=defs[item.type];const st=statusFor(item);
+
+    if(!item){
+      none.style.display='block';
+      panel.style.display='none';
+      quick.classList.remove('show');
+      document.getElementById('sheetMeta').textContent='tap to open';
+      return;
+    }
+
+    none.style.display='none';
+    panel.style.display='block';
+    const def=defs[item.type];
+    const st=statusFor(item);
+
     document.getElementById('selName').textContent=def.name;
-    document.getElementById('selSize').textContent=def.sizeLabel || `${def.w} × ${def.d} cm`;
-    document.getElementById('selHeight').textContent=def.heightLabel || `${def.h} cm`;
-    document.getElementById('selX').textContent=(item.x/SCALE).toFixed(2).replace('.',',')+' m';
-    document.getElementById('selY').textContent=(item.y/SCALE).toFixed(2).replace('.',',')+' m';
+    document.getElementById('selClass').textContent=`${def.gameClass} · ${def.role}`;
     document.getElementById('selR').textContent=((item.r%360)+360)%360+'°';
-    const s=document.getElementById('selStatus');s.textContent=st.text;s.className='value '+(st.ok?'status-good':'status-bad');
+    const s=document.getElementById('selStatus');
+    s.textContent=st.ok?'VALID':st.text;
+    s.className='value '+(st.ok?'status-good':'status-bad');
 
     const mirror=document.getElementById('mirrorBtn');
     mirror.style.display=def.kind==='lshape'?'inline-block':'none';
-    mirror.textContent=item.mirrored?'L zurückspiegeln':'L spiegeln';
+    mirror.textContent=item.mirrored?'⇄ Mirror back':'⇄ Mirror L';
 
     const fold=document.getElementById('foldBtn');
     fold.style.display=def.kind==='sofabed'?'inline-block':'none';
-    fold.textContent=item.foldedOut?'Einklappen':'Ausklappen';
+    fold.textContent=item.foldedOut?'⇱ Retract':'⇲ Deploy';
+
+    document.getElementById('quickName').textContent=def.name;
+    quick.classList.add('show');
+    document.getElementById('sheetMeta').textContent=def.name;
   }
+
+
+  // ---------- Game panel ----------
+  const toolPanel=document.getElementById('toolPanel');
+
+  function setPanelOpen(open){
+    toolPanel.classList.toggle('open',!!open);
+    document.body.classList.toggle('sheet-open',!!open);
+    document.getElementById('sheetMeta').textContent=open?'swipe down / tap to close':(selectedId?defs[itemById(selectedId)?.type]?.name||'selected':'tap to open');
+  }
+
+  function setPanelPane(name,openSheet=true){
+    document.querySelectorAll('.panel-tab').forEach(b=>b.classList.toggle('active',b.dataset.pane===name));
+    document.querySelectorAll('.panel-pane').forEach(p=>p.classList.toggle('active',p.dataset.paneContent===name));
+    if(openSheet && window.matchMedia('(max-width:980px)').matches) setPanelOpen(true);
+  }
+
+  document.getElementById('panelToggle').addEventListener('click',()=>setPanelOpen(!toolPanel.classList.contains('open')));
+  document.getElementById('panelToggle').addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();setPanelOpen(!toolPanel.classList.contains('open'));}
+  });
+  document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>setPanelPane(b.dataset.pane,false)));
+
+  // ---------- Map camera: buttons, wheel, background pan and pinch ----------
+  const BASE_VIEW={x:-70,y:-70,w:920,h:585};
+  let camera={...BASE_VIEW};
+  let mapPan=null;
+  const pointers=new Map();
+  let pinchState=null;
+
+  function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+
+  function applyCamera(){
+    svg.setAttribute('viewBox',`${camera.x} ${camera.y} ${camera.w} ${camera.h}`);
+    const pct=Math.round(BASE_VIEW.w/camera.w*100);
+    document.getElementById('zoomReadout').textContent=pct+'%';
+  }
+
+  function clientWorld(clientX,clientY){
+    const pt=svg.createSVGPoint();
+    pt.x=clientX;pt.y=clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+
+  function zoomAt(multiplier,clientX=null,clientY=null){
+    const rect=svg.getBoundingClientRect();
+    if(clientX==null){clientX=rect.left+rect.width/2;clientY=rect.top+rect.height/2;}
+    const anchor=clientWorld(clientX,clientY);
+    const ratioX=(anchor.x-camera.x)/camera.w;
+    const ratioY=(anchor.y-camera.y)/camera.h;
+
+    const minW=BASE_VIEW.w/4.25;
+    const maxW=BASE_VIEW.w*1.15;
+    const newW=clamp(camera.w/multiplier,minW,maxW);
+    const scale=newW/camera.w;
+    const newH=camera.h*scale;
+
+    camera.x=anchor.x-ratioX*newW;
+    camera.y=anchor.y-ratioY*newH;
+    camera.w=newW;camera.h=newH;
+    applyCamera();
+  }
+
+  function fitMap(){
+    camera={...BASE_VIEW};
+    applyCamera();
+  }
+
+  document.getElementById('zoomInBtn').onclick=()=>zoomAt(1.28);
+  document.getElementById('zoomOutBtn').onclick=()=>zoomAt(1/1.28);
+  document.getElementById('zoomFitBtn').onclick=fitMap;
+
+  svg.addEventListener('wheel',e=>{
+    e.preventDefault();
+    zoomAt(e.deltaY<0?1.16:1/1.16,e.clientX,e.clientY);
+  },{passive:false});
+
+  // Track pointers in capture phase so pinch works even when the first finger is on an item.
+  svg.addEventListener('pointerdown',e=>{
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+    if(pointers.size===2){
+      drag=null;
+      mapPan=null;
+      const pts=[...pointers.values()];
+      const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+      pinchState={
+        distance:Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y),
+        view:{...camera},
+        anchor:clientWorld(mid.x,mid.y)
+      };
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    const onFurniture=!!e.target.closest?.('[data-id]');
+    const isBackground=!onFurniture;
+    if(isBackground && e.button===0){
+      selectedId=null;
+      renderSelected();
+      const rect=svg.getBoundingClientRect();
+      mapPan={
+        pointerId:e.pointerId,
+        clientX:e.clientX,clientY:e.clientY,
+        x:camera.x,y:camera.y,
+        pxPerWorldX:rect.width/camera.w,
+        pxPerWorldY:rect.height/camera.h
+      };
+      try{svg.setPointerCapture(e.pointerId)}catch(_){}
+    }
+  },true);
+
+  svg.addEventListener('pointermove',e=>{
+    if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+    if(pointers.size===2 && pinchState){
+      e.preventDefault();
+      const pts=[...pointers.values()];
+      const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+      if(!pinchState.distance)return;
+
+      const factor=dist/pinchState.distance;
+      const minW=BASE_VIEW.w/4.25,maxW=BASE_VIEW.w*1.15;
+      const newW=clamp(pinchState.view.w/factor,minW,maxW);
+      const newH=pinchState.view.h*(newW/pinchState.view.w);
+
+      const rect=svg.getBoundingClientRect();
+      const midX=(pts[0].x+pts[1].x)/2;
+      const midY=(pts[0].y+pts[1].y)/2;
+      const rx=(midX-rect.left)/rect.width;
+      const ry=(midY-rect.top)/rect.height;
+
+      camera.w=newW;camera.h=newH;
+      camera.x=pinchState.anchor.x-rx*newW;
+      camera.y=pinchState.anchor.y-ry*newH;
+      applyCamera();
+      e.stopPropagation();
+      return;
+    }
+
+    if(mapPan && mapPan.pointerId===e.pointerId && pointers.size===1){
+      camera.x=mapPan.x-(e.clientX-mapPan.clientX)/mapPan.pxPerWorldX;
+      camera.y=mapPan.y-(e.clientY-mapPan.clientY)/mapPan.pxPerWorldY;
+      applyCamera();
+    }
+  },true);
+
+  function releasePointer(e){
+    pointers.delete(e.pointerId);
+    if(pointers.size<2)pinchState=null;
+    if(mapPan && mapPan.pointerId===e.pointerId)mapPan=null;
+  }
+  svg.addEventListener('pointerup',releasePointer,true);
+  svg.addEventListener('pointercancel',releasePointer,true);
+
+  // Quick edit controls for mobile.
+  document.getElementById('quickRotL').onclick=()=>document.getElementById('rotL').click();
+  document.getElementById('quickRotR').onclick=()=>document.getElementById('rotR').click();
+  document.getElementById('quickEdit').onclick=()=>setPanelPane('edit',true);
+
 
   // ---------- Save / share / Firebase community layer ----------
   const SAVED_KEY='roomrush-saved-v1';
@@ -802,7 +1155,7 @@ const db = getFirestore(firebaseApp);
 
         return {
           id:snap.id,
-          title:String(d.title||'Unbenannt').slice(0,40),
+          title:String(d.title||'Untitled Run').slice(0,40),
           author:String(d.author||'Gast').slice(0,40),
           ownerId:d.ownerId||'',
           items:Array.isArray(d.items)?d.items:[],
@@ -876,7 +1229,7 @@ const db = getFirestore(firebaseApp);
       if(!problem){
         for(let j=0;j<layoutItems.length;j++){
           if(j===idx)continue;
-          if(polysOverlap(polys,allWorld[j])){problem='Möbelkollision';break;}
+          if(polysOverlap(polys,allWorld[j])){problem='Item collision';break;}
         }
       }
 
@@ -885,7 +1238,7 @@ const db = getFirestore(firebaseApp);
         const minX=Math.min(...verts.map(p=>p.x));
         if(minX<100){
           const allowed=82+1.01*Math.max(0,minX);
-          if(def.h>allowed+0.01) problem='zu hoch unter Dachschräge';
+          if(def.h>allowed+0.01) problem='zu hoch unter LOW ZONE';
         }
       }
 
@@ -942,7 +1295,7 @@ const db = getFirestore(firebaseApp);
     // 40 pts: basic validity
     if(m.invalid===0){
       score+=40;
-      notes.push('Keine Kollisionen oder Raumgrenzen-Probleme erkannt.');
+      notes.push('Keine Kollisionen oder Arena-Grenzprobleme erkannt.');
     }else{
       const validPoints=Math.max(0,40-m.invalid*15);
       score+=validPoints;
@@ -953,8 +1306,8 @@ const db = getFirestore(firebaseApp);
     const doorPoints=m.doorConflicts===0?15:m.doorConflicts===1?7:0;
     score+=doorPoints;
     notes.push(m.doorConflicts===0
-      ? 'Beide Türbereiche bleiben frei.'
-      : `${m.doorConflicts} Türbereich${m.doorConflicts===1?'':'e'} werden von Möbeln belegt.`);
+      ? 'Beide Gate-Zonee bleiben frei.'
+      : `${m.doorConflicts} Gate-Zone${m.doorConflicts===1?'':'e'} sind durch Items belegt.`);
 
     let benchmarkText='noch keine Daten';
     let basisText='Grundcheck – noch keine Community-Benchmark';
@@ -982,7 +1335,7 @@ const db = getFirestore(firebaseApp);
 
       const covDiff=(m.coverage-bm.coverage)*100;
       if(Math.abs(covDiff)<=5){
-        notes.push(`Möbeldichte liegt nahe am Top-${n}-Median (${Math.round(bm.coverage*100)} %).`);
+        notes.push(`Build-Dichte liegt nahe am Top-${n}-Median (${Math.round(bm.coverage*100)} %).`);
       }else if(covDiff>0){
         notes.push(`Dein Layout ist dichter möbliert als der Top-${n}-Median (${Math.round(m.coverage*100)} % vs. ${Math.round(bm.coverage*100)} %).`);
       }else{
@@ -991,7 +1344,7 @@ const db = getFirestore(firebaseApp);
 
       const itemDiff=m.count-bm.count;
       if(Math.abs(itemDiff)<=1){
-        notes.push(`Möbelanzahl ähnelt den Top-${n}-Layouts.`);
+        notes.push(`Item-Anzahl ähnelt den Top-${n}-Layouts.`);
       }else if(itemDiff>1){
         notes.push(`Du nutzt mehr Einzelmöbel als der Top-${n}-Median (${m.count} vs. ${Math.round(bm.count)}).`);
       }else{
@@ -1040,7 +1393,7 @@ const db = getFirestore(firebaseApp);
   }
 
   function autoRateCurrent(){
-    if(!items.length){toast('Setze zuerst Möbel in den Raum');return null;}
+    if(!items.length){toast('Setze zuerst Items auf die Map');return null;}
     const review=buildAutoReview(cloneItems());
     showAutoReview(review);
     toast(`ROOM COACH: ${review.score}/100`);
@@ -1058,7 +1411,7 @@ const db = getFirestore(firebaseApp);
   }
 
   function saveNamedLayout(){
-    const title=(layoutNameEl.value||'Mein Layout').trim()||'Mein Layout';
+    const title=(layoutNameEl.value||'My Run').trim()||'My Run';
     const saved=getJSON(SAVED_KEY,[]);
     saved.unshift({id:uid(),title,items:cloneItems(),savedAt:Date.now()});
     setJSON(SAVED_KEY,saved.slice(0,20));
@@ -1072,13 +1425,13 @@ const db = getFirestore(firebaseApp);
     if(!sel)return;
     const current=sel.value;
     const saved=getJSON(SAVED_KEY,[]);
-    sel.innerHTML='<option value="">Gespeicherte Layouts …</option>' + saved.map(x=>`<option value="${x.id}">${escapeHTML(x.title)} · ${new Date(x.savedAt).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</option>`).join('');
+    sel.innerHTML='<option value="">Saved runs …</option>' + saved.map(x=>`<option value="${x.id}">${escapeHTML(x.title)} · ${new Date(x.savedAt).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</option>`).join('');
     if(saved.some(x=>x.id===current))sel.value=current;
   }
   function loadSavedLayout(){
     const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
     const entry=getJSON(SAVED_KEY,[]).find(x=>x.id===id);if(!entry)return;
-    items=cloneItems(entry.items);nextId=Math.max(1,...items.map(x=>Number(x.id)||0))+1;selectedId=null;layoutNameEl.value=entry.title;save();renderAll();toast('Gespeichertes Layout geladen');
+    items=cloneItems(entry.items);nextId=Math.max(1,...items.map(x=>Number(x.id)||0))+1;selectedId=null;layoutNameEl.value=entry.title;save();renderAll();toast('Saved run loaded');
   }
   function deleteSavedLayout(){
     const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
@@ -1086,7 +1439,7 @@ const db = getFirestore(firebaseApp);
   }
 
   function encodeLayout(){
-    const payload={v:1,title:(layoutNameEl.value||'Geteiltes Layout').trim(),items:cloneItems()};
+    const payload={v:1,title:(layoutNameEl.value||'Shared Run').trim(),items:cloneItems()};
     const bytes=new TextEncoder().encode(JSON.stringify(payload));
     let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
     return btoa(bin);
@@ -1104,10 +1457,10 @@ const db = getFirestore(firebaseApp);
     const help=document.getElementById('shareHelp');
     if(location.protocol==='http:' || location.protocol==='https:'){
       const url=new URL(location.href);url.hash='layout='+encodeURIComponent(code);
-      help.textContent='Wenn die App gehostet ist, funktioniert der Link direkt. Alternativ kann der Layout-Code importiert werden.';
+      help.textContent='Wenn die App gehostet ist, funktioniert der Link direkt. Alternativ kann der Run-Code importiert werden.';
       document.getElementById('shareCode').value=url.toString();
     }else{
-      help.textContent='Diese Datei läuft lokal. Deshalb teilen wir einen portablen Layout-Code. In einer gehosteten Version wird daraus automatisch ein direkter Link.';
+      help.textContent='Diese Datei läuft lokal. Deshalb teilen wir einen portablen Run-Code. In einer gehosteten Version wird daraus automatisch ein direkter Link.';
     }
     document.getElementById('shareModal').classList.add('open');
   }
@@ -1122,7 +1475,7 @@ const db = getFirestore(firebaseApp);
     nextId=items.length+1;selectedId=null;
     if(data.title) layoutNameEl.value=data.title;
     save();renderAll();setView('build');
-    toast('Geteiltes Layout geladen');
+    toast('Shared Run geladen');
   }
   async function copyShare(){
     const text=document.getElementById('shareCode').value;
@@ -1135,11 +1488,11 @@ const db = getFirestore(firebaseApp);
     else copyShare();
   }
   async function publishLayout(){
-    if(!items.length){toast('Setze zuerst Möbel in den Raum');return;}
-    if(!currentIsValid()){toast('Vor dem Voting bitte rote Kollisionen lösen');return;}
+    if(!items.length){toast('Setze zuerst Items auf die Map');return;}
+    if(!currentIsValid()){toast('Vor dem Publish bitte rote Moves lösen');return;}
     if(!firebaseUser || !firebaseReady){toast('Firebase verbindet noch – bitte kurz warten');return;}
 
-    const title=(layoutNameEl.value||'Mein Layout').trim().slice(0,40)||'Mein Layout';
+    const title=(layoutNameEl.value||'My Run').trim().slice(0,40)||'My Run';
     const review=buildAutoReview(cloneItems());
     showAutoReview(review);
 
@@ -1160,7 +1513,7 @@ const db = getFirestore(firebaseApp);
       });
 
       saveStatusEl.textContent=`🏁 Im Voting · ROOM COACH ${review.score}/100 · Ranking nur nach Likes`;
-      toast('Layout veröffentlicht');
+      toast('Run veröffentlicht');
       await refreshCommunity(false);
     }catch(err){
       console.error('Publish failed',err);
@@ -1207,7 +1560,7 @@ const db = getFirestore(firebaseApp);
       <div class="swipe-stamp stamp-like" id="likeStamp">LIKE</div><div class="swipe-stamp stamp-pass" id="passStamp">PASS</div>
       <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')}</div></div><div class="score-badge">♥ ${activeSwipe.score||0} Likes</div></div>
       <div class="preview-wrap"><svg class="preview-svg" id="swipePreview"></svg></div>
-      <div class="swipe-footer">${activeSwipe.items.length} Möbel${Number.isFinite(activeSwipe.autoScore)?` · ✨ Auto ${activeSwipe.autoScore}/100`:''} · Ranking nur nach Likes</div>
+      <div class="swipe-footer">${activeSwipe.items.length} Items${Number.isFinite(activeSwipe.autoScore)?` · ✨ Auto ${activeSwipe.autoScore}/100`:''} · Ranking nur nach Likes</div>
     </div>`;
     renderStaticPreview(document.getElementById('swipePreview'),activeSwipe.items);
     attachSwipeGesture();
@@ -1286,10 +1639,12 @@ const db = getFirestore(firebaseApp);
   }
 
   function setView(view){
-    buildView.style.display=view==='build'?'grid':'none';
+    document.body.dataset.view=view;
+    buildView.style.display=view==='build'?'':'none';
     swipeView.style.display=view==='swipe'?'block':'none';
     leaderView.style.display=view==='leader'?'block':'none';
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+    if(view!=='build') setPanelOpen(false);
     if(view==='swipe'){refreshCommunity(false);}
     if(view==='leader'){refreshCommunity(false);}
   }
@@ -1297,7 +1652,7 @@ const db = getFirestore(firebaseApp);
   function importFromHash(){
     if(!location.hash.startsWith('#layout=')) return;
     try{importShared(decodeURIComponent(location.hash.slice(8)));history.replaceState(null,'',location.pathname+location.search);}
-    catch(_){toast('Geteilter Layout-Link konnte nicht gelesen werden');}
+    catch(_){toast('Geteilter Run-Link konnte nicht gelesen werden');}
   }
 
   function renderAll(){
@@ -1316,14 +1671,7 @@ const db = getFirestore(firebaseApp);
     }catch(_){}
   }
 
-  // Deselect only when the actual empty room/background is clicked.
-  // Clicking an item keeps it selected after mouse-up.
-  svg.addEventListener('pointerdown',e=>{
-    if(e.target===svg || e.target===roomFill){
-      selectedId=null;
-      renderAll();
-    }
-  });
+
   document.getElementById('rotL').onclick=()=>{const i=itemById(selectedId);if(i){i.r-=15;save();renderAll();}};
   document.getElementById('rotR').onclick=()=>{const i=itemById(selectedId);if(i){i.r+=15;save();renderAll();}};
   document.getElementById('mirrorBtn').onclick=()=>{const i=itemById(selectedId);if(i){i.mirrored=!i.mirrored;save();renderAll();}};
@@ -1351,13 +1699,15 @@ const db = getFirestore(firebaseApp);
   document.getElementById('nativeShareBtn').onclick=nativeShare;
   document.getElementById('importShareBtn').onclick=()=>{
     try{importShared(document.getElementById('shareCode').value);document.getElementById('shareModal').classList.remove('open');}
-    catch(_){toast('Ungültiger Layout-Code');}
+    catch(_){toast('Ungültiger Run-Code');}
   };
   document.getElementById('passBtn').onclick=()=>voteSwipe(false);
   document.getElementById('likeBtn').onclick=()=>voteSwipe(true);
   document.getElementById('resetSwipeBtn').onclick=()=>refreshCommunity(true);
 
+  document.body.dataset.view='build';
   load();
+  fitMap();
   renderAll();
   renderLeaderboard();
   resetSwipeQueue();
