@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes,viewport-fit=cover" />
 <title>Room Rush – Single Map Layout Challenge</title>
-<meta name="description" content="Room Rush: ein Single-Map Layout-Game. Baue einen Run, teile ihn, swipe Community-Builds und erklimme das Ranking." />
+<meta name="description" content="Room Rush: ein Single-Map Layout-Game. Baue ein Layout, teile es, swipe Community-Layouts und erklimme das Ranking." />
 <meta name="theme-color" content="#111827" />
 <style>
   :root{
@@ -283,18 +283,111 @@
     .panel-tabs{margin-top:0}
   }
 
+
+  .run-jump{
+    display:none;
+    align-items:center;gap:5px;
+    margin-left:auto;padding:7px 10px;
+    border:0;border-radius:10px;
+    background:#111827;color:#fff;
+    font-size:10px;font-weight:950;letter-spacing:.08em;
+    box-shadow:none
+  }
+  .run-jump span{
+    min-width:31px;padding:2px 5px;border-radius:999px;
+    background:#334155;color:#cbd5e1;
+    font-size:9px;letter-spacing:0
+  }
+  .run-jump.ready{
+    background:#15803d;
+    box-shadow:0 0 0 3px rgba(34,197,94,.14)
+  }
+  .run-jump.ready span{background:rgba(255,255,255,.16);color:#fff}
+  .run-jump.fix{background:#b45309}
+  .ready-card{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    gap:8px 10px;align-items:center;
+    padding:11px;margin-bottom:10px;
+    border:1px solid #fed7aa;border-radius:14px;
+    background:#fff7ed
+  }
+  .ready-card.ready{
+    border-color:#bbf7d0;background:#f0fdf4
+  }
+  .ready-card.fix{
+    border-color:#fecaca;background:#fef2f2
+  }
+  .ready-icon{
+    width:34px;height:34px;border-radius:11px;
+    display:grid;place-items:center;
+    background:#ffedd5;color:#c2410c;
+    font-size:18px;font-weight:950
+  }
+  .ready-card.ready .ready-icon{background:#dcfce7;color:#15803d}
+  .ready-card.fix .ready-icon{background:#fee2e2;color:#b91c1c}
+  .ready-copy{min-width:0;display:flex;flex-direction:column}
+  .ready-copy strong{font-size:11px;letter-spacing:.045em;color:#9a3412}
+  .ready-copy span{font-size:10px;color:#7c2d12;margin-top:2px}
+  .ready-card.ready .ready-copy strong{color:#166534}
+  .ready-card.ready .ready-copy span{color:#15803d}
+  .ready-card.fix .ready-copy strong{color:#991b1b}
+  .ready-card.fix .ready-copy span{color:#b91c1c}
+  .ready-mini{
+    padding:4px 7px;border-radius:999px;
+    background:#ffedd5;color:#9a3412;
+    font-size:9px;font-weight:950;white-space:nowrap
+  }
+  .ready-card.ready .ready-mini{background:#dcfce7;color:#166534}
+  .ready-card.fix .ready-mini{background:#fee2e2;color:#991b1b}
+  .ready-progress{
+    grid-column:1/-1;height:7px;border-radius:999px;
+    overflow:hidden;background:#e5e7eb
+  }
+  .ready-progress span{
+    display:block;height:100%;width:0;
+    border-radius:999px;background:#f59e0b;
+    transition:width .2s ease
+  }
+  .ready-card.ready .ready-progress span{background:#22c55e}
+  .ready-card.fix .ready-progress span{background:#ef4444}
+  .ready-help{
+    grid-column:1/-1;font-size:10px;color:#7c2d12;line-height:1.4
+  }
+  .ready-card.ready .ready-help{color:#166534}
+  .ready-card.fix .ready-help{color:#991b1b}
+  #publishLayoutBtn:disabled{
+    opacity:.5;cursor:not-allowed;
+    filter:saturate(.5)
+  }
+
+  @media(max-width:980px){
+    .panel-sheet-head{
+      gap:7px;
+      padding-right:8px
+    }
+    .sheet-title{flex:0 0 auto}
+    .sheet-meta{
+      min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      margin-left:auto
+    }
+    .run-jump{display:inline-flex;flex:0 0 auto}
+    .ready-card{padding:10px}
+    .ready-copy strong{font-size:10px}
+  }
+
 </style>
 </head>
 <body>
 <div class="game-header">
   <div class="game-brand">
     <div class="game-logo">🛋️</div>
-    <div><strong>ROOM RUSH</strong><span>single-map challenge</span></div>
+    <div><strong>ROOM RUSH</strong><span>single-map design challenge</span></div>
   </div>
   <div class="hud">
     <div class="hud-chip">🧩 Placed <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
     <div class="hud-chip">⚡ Build <b id="hudValidity">bereit</b></div>
-    <div class="hud-chip">🔥 Runs <b id="hudCommunity">0</b></div>
+    <div class="hud-chip">🔥 Layouts <b id="hudCommunity">0</b></div>
     <div class="hud-chip">☁️ Firebase <b id="hudCloud">verbinde…</b></div>
   </div>
   <nav class="game-tabs">
@@ -303,7 +396,7 @@
     <button class="tab-btn" data-view="leader">🏆 Top</button>
   </nav>
 </div>
-<div class="game-subhead">MAP 01 · Ein Loadout, eine Arena, unendlich viele Builds.</div>
+<div class="game-subhead">MAP 01 · Ein Loadout, eine Map, unendlich viele Layouts.</div>
 
 <div class="app" id="buildView">
   <div class="stage-wrap">
@@ -426,19 +519,22 @@
       <span class="sheet-handle"></span>
       <span class="sheet-title">🎒 LOADOUT</span>
       <span class="sheet-meta" id="sheetMeta">tap to open</span>
+      <button class="run-jump" id="runJumpBtn" type="button" aria-label="Layout öffnen">
+        LAYOUT <span id="runJumpCount">0/0</span>
+      </button>
     </div>
 
     <div class="panel-body">
       <div class="panel-tabs">
         <button class="panel-tab active" data-pane="loadout">🧩 Loadout</button>
         <button class="panel-tab" data-pane="edit">🎛 Edit</button>
-        <button class="panel-tab" data-pane="run">🚀 Run</button>
+        <button class="panel-tab" data-pane="run">🚀 Layout</button>
       </div>
 
       <section class="panel-pane active" data-pane-content="loadout">
-        <div class="loadout-note">Setze Items in MAP 01. Größen werden absichtlich nur als Game-Klassen angezeigt.</div>
+        <div class="loadout-note">Setze den kompletten Loadout in MAP 01. Erst wenn alle Items genutzt und gültig platziert sind, wird das Layout freigeschaltet.</div>
         <div class="catalog" id="catalog"></div>
-        <div class="map-rule"><strong>RULE:</strong> Rot = ungültiger Move. Locked Zone und Static Props sind tabu.</div>
+        <div class="map-rule"><strong>RULE:</strong> Nutze den kompletten Loadout. Rot = ungültiger Move. Locked Zone und Static Props sind tabu.</div>
       </section>
 
       <section class="panel-pane" data-pane-content="edit">
@@ -470,13 +566,25 @@
 
       <section class="panel-pane" data-pane-content="run">
         <div class="save-card">
-          <div class="save-card-title"><span>🎮 Run Control</span><span class="tiny">MAP 01</span></div>
-          <input id="layoutName" value="My Run" maxlength="40" aria-label="Run name">
+          <div class="save-card-title"><span>🎮 Layout Control</span><span class="tiny">MAP 01</span></div>
+
+          <div class="ready-card" id="readyCard">
+            <div class="ready-icon" id="readyIcon">◌</div>
+            <div class="ready-copy">
+              <strong id="readyTitle">LAYOUT INCOMPLETE</strong>
+              <span id="readyDetail">0/0 Items gesetzt</span>
+            </div>
+            <div class="ready-mini" id="readyMini">NOT READY</div>
+            <div class="ready-progress"><span id="readyProgress"></span></div>
+            <div class="ready-help" id="readyHelp">Zum Veröffentlichen müssen alle Items auf der Map stehen.</div>
+          </div>
+
+          <input id="layoutName" value="My Layout" maxlength="40" aria-label="Layout name">
           <div class="row">
             <button id="saveLayoutBtn">💾 Save</button>
             <button id="shareLayoutBtn">🔗 Share</button>
             <button id="autoRateBtn">✨ Coach</button>
-            <button id="publishLayoutBtn" class="primary">🏁 Publish</button>
+            <button id="publishLayoutBtn" class="primary" disabled>🔒 Publish</button>
           </div>
           <div class="save-status" id="saveStatus"></div>
           <div class="coach-card" id="coachCard">
@@ -497,7 +605,7 @@
             <ul class="coach-notes" id="coachNotes"></ul>
             <div class="coach-disclaimer">Orientation only · 0 influence on likes, swipe ranking or leaderboard.</div>
           </div>
-          <select id="savedLayoutsSelect" aria-label="Saved runs"><option value="">Saved runs …</option></select>
+          <select id="savedLayoutsSelect" aria-label="Saved layouts"><option value="">Saved layouts …</option></select>
           <div class="row" style="margin-bottom:0">
             <button id="loadSavedBtn">↩ Load</button>
             <button id="deleteSavedBtn">🗑 Delete</button>
@@ -512,7 +620,7 @@
 <section class="game-screen" id="swipeView">
   <div class="arena swipe-shell">
     <div class="arena-head">
-      <div><h2>🔥 Swipe Arena</h2><p>Left = pass · Right = like. Community-Runs treten auf derselben Map gegeneinander an.</p></div>
+      <div><h2>🔥 Swipe Arena</h2><p>Left = pass · Right = like. Community-Layouts treten auf derselben Map gegeneinander an.</p></div>
       <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
@@ -526,7 +634,7 @@
 <section class="game-screen" id="leaderView">
   <div class="arena">
     <div class="arena-head">
-      <div><h2>🏆 Hall of Runs</h2><p>Ranking ausschließlich nach Community-Likes. ROOM COACH bleibt komplett getrennt.</p></div>
+      <div><h2>🏆 Hall of Layouts</h2><p>Ranking ausschließlich nach Community-Likes. ROOM COACH bleibt komplett getrennt.</p></div>
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
@@ -537,7 +645,7 @@
 <div class="modal-backdrop" id="shareModal">
   <div class="modal">
     <h3>🔗 Layout teilen</h3>
-    <p id="shareHelp">Der Run-Code enthält nur den Build-Zustand von MAP 01 und kann auf einem anderen Gerät importiert werden.</p>
+    <p id="shareHelp">Der Layout-Code enthält nur den Layout-Zustand von MAP 01 und kann auf einem anderen Gerät importiert werden.</p>
     <textarea class="share-code" id="shareCode" spellcheck="false"></textarea>
     <div class="row">
       <button id="copyShareBtn" class="primary">Code kopieren</button>
@@ -592,15 +700,15 @@ const db = getFirestore(firebaseApp);
   const saveStatusEl = document.getElementById('saveStatus');
 
   const defs = {
-    chair: {name:'Chair', gameClass:'S', role:'Seat', count:2, w:38, d:38, h:null, kind:'rect'},
-    office: {name:'Task Chair', gameClass:'M', role:'Seat', count:1, w:60, d:60, h:100, kind:'circle'},
-    desk270: {name:'Long Desk', gameClass:'XL', role:'Work', count:1, w:270, d:60, h:80, kind:'rect'},
-    table90: {name:'Low Table', gameClass:'M', role:'Surface', count:1, w:90, d:55, h:45, kind:'rect'},
-    floorlamp: {name:'Floor Light', gameClass:'S', role:'Light', count:2, w:30, d:30, h:140, kind:'circle'},
-    lsofa: {name:'Corner Sofa', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape'},
-    sofabed: {name:'Sleeper Sofa', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed'},
-    rolltable: {name:'Utility Cart', gameClass:'S', role:'Utility', count:1, w:40, d:40, h:35, kind:'rect'},
-    jibomat: {name:'Utility Unit', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect'}
+    chair: {name:'Vierbein-Stuhl', gameClass:'S', role:'Sitzplatz', count:2, w:38, d:38, h:null, kind:'rect'},
+    office: {name:'Bürostuhl', gameClass:'M', role:'Arbeitsplatz', count:1, w:60, d:60, h:100, kind:'circle'},
+    desk270: {name:'Tisch groß', gameClass:'XL', role:'Arbeitsfläche', count:1, w:270, d:60, h:80, kind:'rect'},
+    table90: {name:'Tisch klein', gameClass:'M', role:'Ablage', count:1, w:90, d:55, h:45, kind:'rect'},
+    floorlamp: {name:'Stehlampe', gameClass:'S', role:'Licht', count:2, w:30, d:30, h:140, kind:'circle'},
+    lsofa: {name:'L-Couch', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape'},
+    sofabed: {name:'Ausklappcouch', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed'},
+    rolltable: {name:'Rolltisch', gameClass:'S', role:'Ablage', count:1, w:40, d:40, h:35, kind:'rect'},
+    jibomat: {name:'Jibomat', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect'}
   };
 
   const fixedObstacles = [
@@ -941,6 +1049,11 @@ const db = getFirestore(firebaseApp);
   }
 
   document.getElementById('panelToggle').addEventListener('click',()=>setPanelOpen(!toolPanel.classList.contains('open')));
+  document.getElementById('runJumpBtn').addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    setPanelPane('run',true);
+  });
   document.getElementById('panelToggle').addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){e.preventDefault();setPanelOpen(!toolPanel.classList.contains('open'));}
   });
@@ -1155,7 +1268,7 @@ const db = getFirestore(firebaseApp);
 
         return {
           id:snap.id,
-          title:String(d.title||'Untitled Run').slice(0,40),
+          title:String(d.title||'Untitled Layout').slice(0,40),
           author:String(d.author||'Gast').slice(0,40),
           ownerId:d.ownerId||'',
           items:Array.isArray(d.items)?d.items:[],
@@ -1335,7 +1448,7 @@ const db = getFirestore(firebaseApp);
 
       const covDiff=(m.coverage-bm.coverage)*100;
       if(Math.abs(covDiff)<=5){
-        notes.push(`Build-Dichte liegt nahe am Top-${n}-Median (${Math.round(bm.coverage*100)} %).`);
+        notes.push(`Layout-Dichte liegt nahe am Top-${n}-Median (${Math.round(bm.coverage*100)} %).`);
       }else if(covDiff>0){
         notes.push(`Dein Layout ist dichter möbliert als der Top-${n}-Median (${Math.round(m.coverage*100)} % vs. ${Math.round(bm.coverage*100)} %).`);
       }else{
@@ -1400,18 +1513,107 @@ const db = getFirestore(firebaseApp);
     return review;
   }
 
-  function currentIsValid(){ return items.every(i=>statusFor(i).ok); }
+  function currentIsValid(){ return items.length>0 && items.every(i=>statusFor(i).ok); }
+
+  function totalRequiredItems(){
+    return Object.values(defs).reduce((sum,def)=>sum+def.count,0);
+  }
+
+  function allRequiredItemsUsed(){
+    return Object.entries(defs).every(([type,def])=>
+      items.filter(item=>item.type===type).length===def.count
+    );
+  }
+
+  function buildReadiness(){
+    const total=totalRequiredItems();
+    const placed=items.length;
+    const allUsed=allRequiredItemsUsed();
+    const valid=currentIsValid();
+    return {
+      total,
+      placed,
+      allUsed,
+      valid,
+      ready:allUsed && valid
+    };
+  }
+
+  function updateReadyUI(){
+    const r=buildReadiness();
+
+    const card=document.getElementById('readyCard');
+    const icon=document.getElementById('readyIcon');
+    const title=document.getElementById('readyTitle');
+    const detail=document.getElementById('readyDetail');
+    const mini=document.getElementById('readyMini');
+    const progress=document.getElementById('readyProgress');
+    const help=document.getElementById('readyHelp');
+    const publish=document.getElementById('publishLayoutBtn');
+    const jump=document.getElementById('runJumpBtn');
+    const jumpCount=document.getElementById('runJumpCount');
+
+    const pct=r.total ? Math.min(100,Math.round(r.placed/r.total*100)) : 0;
+    progress.style.width=pct+'%';
+    jumpCount.textContent=r.ready?'✓':`${r.placed}/${r.total}`;
+
+    card.classList.remove('ready','fix');
+    jump.classList.remove('ready','fix');
+
+    if(r.ready){
+      card.classList.add('ready');
+      jump.classList.add('ready');
+      icon.textContent='✓';
+      title.textContent='READY TO PUBLISH';
+      detail.textContent=`Alle ${r.total} Items gesetzt · Layout ist gültig`;
+      mini.textContent='READY';
+      help.textContent='Das Layout kann jetzt veröffentlicht und ins Community-Voting geschickt werden.';
+      publish.disabled=false;
+      publish.textContent='🏁 Publish Layout';
+    }else if(r.allUsed && !r.valid){
+      card.classList.add('fix');
+      jump.classList.add('fix');
+      icon.textContent='!';
+      title.textContent='FIX YOUR LAYOUT';
+      detail.textContent=`Alle ${r.total} Items gesetzt · mindestens ein Move ist ungültig`;
+      mini.textContent='FIX';
+      help.textContent='Löse alle roten Kollisionen bzw. ungültigen Platzierungen, dann wird Publish freigeschaltet.';
+      publish.disabled=true;
+      publish.textContent='🔒 Fix first';
+    }else{
+      icon.textContent='◌';
+      title.textContent='LAYOUT INCOMPLETE';
+      detail.textContent=`${r.placed}/${r.total} Items gesetzt`;
+      mini.textContent='NOT READY';
+      help.textContent=`Nutze noch ${Math.max(0,r.total-r.placed)} Item${r.total-r.placed===1?'':'s'}, um das Layout freizuschalten.`;
+      publish.disabled=true;
+      publish.textContent=`🔒 ${r.placed}/${r.total} Items`;
+    }
+  }
+
   function updateHUD(){
-    const total=Object.values(defs).reduce((s,d)=>s+d.count,0);
-    document.getElementById('hudPlaced').textContent=items.length;
-    document.getElementById('hudTotal').textContent=total;
+    const r=buildReadiness();
+    document.getElementById('hudPlaced').textContent=r.placed;
+    document.getElementById('hudTotal').textContent=r.total;
+
     const v=document.getElementById('hudValidity');
-    const ok=currentIsValid();v.textContent=ok?'gültig':'prüfen';v.style.color=ok?'#86efac':'#fca5a5';
+    if(r.ready){
+      v.textContent='READY';
+      v.style.color='#86efac';
+    }else if(r.allUsed){
+      v.textContent='FIX';
+      v.style.color='#fca5a5';
+    }else{
+      v.textContent=`${r.placed}/${r.total}`;
+      v.style.color='#fde68a';
+    }
+
     document.getElementById('hudCommunity').textContent=communityCache.length;
+    updateReadyUI();
   }
 
   function saveNamedLayout(){
-    const title=(layoutNameEl.value||'My Run').trim()||'My Run';
+    const title=(layoutNameEl.value||'My Layout').trim()||'My Layout';
     const saved=getJSON(SAVED_KEY,[]);
     saved.unshift({id:uid(),title,items:cloneItems(),savedAt:Date.now()});
     setJSON(SAVED_KEY,saved.slice(0,20));
@@ -1425,13 +1627,13 @@ const db = getFirestore(firebaseApp);
     if(!sel)return;
     const current=sel.value;
     const saved=getJSON(SAVED_KEY,[]);
-    sel.innerHTML='<option value="">Saved runs …</option>' + saved.map(x=>`<option value="${x.id}">${escapeHTML(x.title)} · ${new Date(x.savedAt).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</option>`).join('');
+    sel.innerHTML='<option value="">Saved layouts …</option>' + saved.map(x=>`<option value="${x.id}">${escapeHTML(x.title)} · ${new Date(x.savedAt).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</option>`).join('');
     if(saved.some(x=>x.id===current))sel.value=current;
   }
   function loadSavedLayout(){
     const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
     const entry=getJSON(SAVED_KEY,[]).find(x=>x.id===id);if(!entry)return;
-    items=cloneItems(entry.items);nextId=Math.max(1,...items.map(x=>Number(x.id)||0))+1;selectedId=null;layoutNameEl.value=entry.title;save();renderAll();toast('Saved run loaded');
+    items=cloneItems(entry.items);nextId=Math.max(1,...items.map(x=>Number(x.id)||0))+1;selectedId=null;layoutNameEl.value=entry.title;save();renderAll();toast('Saved layout loaded');
   }
   function deleteSavedLayout(){
     const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
@@ -1439,7 +1641,7 @@ const db = getFirestore(firebaseApp);
   }
 
   function encodeLayout(){
-    const payload={v:1,title:(layoutNameEl.value||'Shared Run').trim(),items:cloneItems()};
+    const payload={v:1,title:(layoutNameEl.value||'Shared Layout').trim(),items:cloneItems()};
     const bytes=new TextEncoder().encode(JSON.stringify(payload));
     let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
     return btoa(bin);
@@ -1457,10 +1659,10 @@ const db = getFirestore(firebaseApp);
     const help=document.getElementById('shareHelp');
     if(location.protocol==='http:' || location.protocol==='https:'){
       const url=new URL(location.href);url.hash='layout='+encodeURIComponent(code);
-      help.textContent='Wenn die App gehostet ist, funktioniert der Link direkt. Alternativ kann der Run-Code importiert werden.';
+      help.textContent='Wenn die App gehostet ist, funktioniert der Link direkt. Alternativ kann der Layout-Code importiert werden.';
       document.getElementById('shareCode').value=url.toString();
     }else{
-      help.textContent='Diese Datei läuft lokal. Deshalb teilen wir einen portablen Run-Code. In einer gehosteten Version wird daraus automatisch ein direkter Link.';
+      help.textContent='Diese Datei läuft lokal. Deshalb teilen wir einen portablen Layout-Code. In einer gehosteten Version wird daraus automatisch ein direkter Link.';
     }
     document.getElementById('shareModal').classList.add('open');
   }
@@ -1475,7 +1677,7 @@ const db = getFirestore(firebaseApp);
     nextId=items.length+1;selectedId=null;
     if(data.title) layoutNameEl.value=data.title;
     save();renderAll();setView('build');
-    toast('Shared Run geladen');
+    toast('Shared Layout geladen');
   }
   async function copyShare(){
     const text=document.getElementById('shareCode').value;
@@ -1488,11 +1690,21 @@ const db = getFirestore(firebaseApp);
     else copyShare();
   }
   async function publishLayout(){
-    if(!items.length){toast('Setze zuerst Items auf die Map');return;}
-    if(!currentIsValid()){toast('Vor dem Publish bitte rote Moves lösen');return;}
+    const readiness=buildReadiness();
+
+    if(!readiness.allUsed){
+      toast(`Noch ${readiness.total-readiness.placed} Item${readiness.total-readiness.placed===1?'':'s'} fehlen`);
+      setPanelPane('loadout',true);
+      return;
+    }
+    if(!readiness.valid){
+      toast('Vor dem Publish bitte alle roten Moves lösen');
+      setPanelPane('edit',true);
+      return;
+    }
     if(!firebaseUser || !firebaseReady){toast('Firebase verbindet noch – bitte kurz warten');return;}
 
-    const title=(layoutNameEl.value||'My Run').trim().slice(0,40)||'My Run';
+    const title=(layoutNameEl.value||'My Layout').trim().slice(0,40)||'My Layout';
     const review=buildAutoReview(cloneItems());
     showAutoReview(review);
 
@@ -1513,7 +1725,7 @@ const db = getFirestore(firebaseApp);
       });
 
       saveStatusEl.textContent=`🏁 Im Voting · ROOM COACH ${review.score}/100 · Ranking nur nach Likes`;
-      toast('Run veröffentlicht');
+      toast('Layout veröffentlicht');
       await refreshCommunity(false);
     }catch(err){
       console.error('Publish failed',err);
@@ -1652,7 +1864,7 @@ const db = getFirestore(firebaseApp);
   function importFromHash(){
     if(!location.hash.startsWith('#layout=')) return;
     try{importShared(decodeURIComponent(location.hash.slice(8)));history.replaceState(null,'',location.pathname+location.search);}
-    catch(_){toast('Geteilter Run-Link konnte nicht gelesen werden');}
+    catch(_){toast('Geteilter Layout-Link konnte nicht gelesen werden');}
   }
 
   function renderAll(){
@@ -1699,7 +1911,7 @@ const db = getFirestore(firebaseApp);
   document.getElementById('nativeShareBtn').onclick=nativeShare;
   document.getElementById('importShareBtn').onclick=()=>{
     try{importShared(document.getElementById('shareCode').value);document.getElementById('shareModal').classList.remove('open');}
-    catch(_){toast('Ungültiger Run-Code');}
+    catch(_){toast('Ungültiger Layout-Code');}
   };
   document.getElementById('passBtn').onclick=()=>voteSwipe(false);
   document.getElementById('likeBtn').onclick=()=>voteSwipe(true);
