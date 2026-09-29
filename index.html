@@ -922,13 +922,17 @@ const db = getFirestore(firebaseApp);
     const fill = !status.ok ? 'rgba(220,38,38,.16)' : (selected ? 'rgba(124,58,237,.10)' : 'rgba(255,255,255,.02)');
     const strokeWidth = !status.ok || selected ? '2.4' : '1.1';
 
-    for(const poly of worldPolys(item)){
+    // IMPORTANT: this overlay lives inside the item's already-rotated <g>.
+    // Therefore it must use LOCAL polygons. Using worldPolys here applied
+    // the rotation once in JS and a second time via the SVG group transform.
+    for(const poly of localPolys(item)){
       const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-      p.setAttribute('points',poly.map(pt=>`${pt.x-item.x},${pt.y-item.y}`).join(' '));
+      p.setAttribute('points',poly.map(pt=>`${pt.x},${pt.y}`).join(' '));
       p.setAttribute('fill',fill);
       p.setAttribute('stroke',stroke);
       p.setAttribute('stroke-width',strokeWidth);
       p.setAttribute('stroke-linejoin','round');
+      p.setAttribute('pointer-events','none');
       g.appendChild(p);
     }
   }
