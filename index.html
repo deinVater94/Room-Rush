@@ -932,7 +932,9 @@ const db = getFirestore(firebaseApp);
       p.setAttribute('stroke',stroke);
       p.setAttribute('stroke-width',strokeWidth);
       p.setAttribute('stroke-linejoin','round');
-      p.setAttribute('pointer-events','none');
+      // This polygon is also the interaction surface for mouse/touch.
+      // Keep pointer events enabled so taps/drags bubble to the item group.
+      p.setAttribute('pointer-events','all');
       g.appendChild(p);
     }
   }
@@ -1225,6 +1227,18 @@ const db = getFirestore(firebaseApp);
 
     const status=statusFor(item);
     const isSelected=item.id===selectedId;
+
+    // Invisible hit surface in LOCAL coordinates. The group itself is rotated,
+    // so this follows the furniture exactly without double-rotation.
+    for(const poly of localPolys(item)){
+      const hit=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      hit.setAttribute('points',poly.map(pt=>`${pt.x},${pt.y}`).join(' '));
+      hit.setAttribute('fill','rgba(0,0,0,0.001)');
+      hit.setAttribute('stroke','none');
+      hit.setAttribute('pointer-events','all');
+      g.appendChild(hit);
+    }
+
     const hadAsset=appendItemVisual(g,item,def);
 
     if(!hadAsset){
