@@ -1638,8 +1638,8 @@ const db = getFirestore(firebaseApp);
     }catch(err){
       console.error('Firebase refresh failed',err);
       firebaseReady=false;
-      setCloudStatus('Fehler',false);
-      if(showToast) toast('Firebase konnte nicht geladen werden');
+      setCloudStatus('DB-Fehler',false);
+      if(showToast) toast(`Firestore: ${err?.code || 'Laden fehlgeschlagen'}`);
     }
   }
 
@@ -2278,7 +2278,8 @@ const db = getFirestore(firebaseApp);
   }
 
   function renderLeaderboard(){
-    const box=document.getElementById('leaderGrid');
+    const box=document.getElementById('leaderboard');
+    if(!box) return;
     if(!communityCache.length){
       box.innerHTML='<div class="empty-deck" style="grid-column:1/-1"><div class="emoji">📦</div><strong>Noch keine Layouts</strong><div style="margin-top:6px">Veröffentliche das erste Community-Layout.</div></div>';
       return;
@@ -2302,6 +2303,27 @@ const db = getFirestore(firebaseApp);
       });
       box.appendChild(card);
     });
+  }
+
+  function setView(view){
+    document.body.dataset.view=view;
+    layoutView.style.display=view==='layout'?'':'none';
+    swipeView.style.display=view==='swipe'?'block':'none';
+    leaderView.style.display=view==='leader'?'block':'none';
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+    if(view!=='layout') setPanelOpen(false);
+    if(view==='swipe'){refreshCommunity(false);}
+    if(view==='leader'){refreshCommunity(false);}
+  }
+
+  function importFromHash(){
+    if(!location.hash.startsWith('#layout=')) return;
+    try{
+      importShared(decodeURIComponent(location.hash.slice(8)));
+      history.replaceState(null,'',location.pathname+location.search);
+    }catch(_){
+      toast('Geteilter Layout-Link konnte nicht gelesen werden');
+    }
   }
 
   function renderAll(){
@@ -2369,16 +2391,7 @@ const db = getFirestore(firebaseApp);
   document.getElementById('likeBtn').onclick=()=>voteSwipe(true);
   document.getElementById('resetSwipeBtn').onclick=()=>refreshCommunity(true);
 
-  document.body.dataset.view='layout';
-  initLayoutPreviewModal();
-  load();
-  fitMap();
-  renderAll();
-  renderLeaderboard();
-  resetSwipeQueue();
-  importFromHash();
-
-  // Anonymous Firebase login. No email/password account is required.
+  // Register Firebase auth first, so unrelated UI errors cannot block login.
   onAuthStateChanged(auth,async user=>{
     if(user){
       firebaseUser=user;
@@ -2393,10 +2406,19 @@ const db = getFirestore(firebaseApp);
       }catch(err){
         console.error('Anonymous auth failed',err);
         setCloudStatus('Auth-Fehler',false);
-        toast('Anonymous Authentication ist noch nicht aktiviert oder die Domain ist nicht autorisiert');
+        toast(`Firebase Auth: ${err?.code || 'Verbindung fehlgeschlagen'}`);
       }
     }
   });
+
+  document.body.dataset.view='layout';
+  initLayoutPreviewModal();
+  load();
+  fitMap();
+  renderAll();
+  renderLeaderboard();
+  resetSwipeQueue();
+  importFromHash();
 })();
 </script>
 
