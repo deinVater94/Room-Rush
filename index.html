@@ -550,6 +550,143 @@
     .preview-canvas svg{width:860px}
   }
 
+
+  /* --- V14: real mobile layout viewer --- */
+  .leader-preview-hit{
+    cursor:zoom-in;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .layout-viewer{
+    position:fixed;
+    inset:0;
+    z-index:400;
+    display:none;
+    background:#0f172a;
+    color:#fff;
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+  .layout-viewer.open{display:flex;flex-direction:column}
+
+  .layout-viewer-head{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:10px 12px;
+    padding-top:max(10px,env(safe-area-inset-top));
+    background:rgba(15,23,42,.96);
+    border-bottom:1px solid rgba(255,255,255,.10);
+    z-index:4;
+  }
+  .layout-viewer-title{
+    min-width:0;
+    flex:1;
+  }
+  .layout-viewer-title strong{
+    display:block;
+    font-size:14px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .layout-viewer-title span{
+    display:block;
+    margin-top:2px;
+    font-size:10px;
+    color:#cbd5e1;
+  }
+  .layout-viewer-actions{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .layout-viewer-actions button{
+    width:42px;
+    height:42px;
+    padding:0;
+    border-radius:12px;
+    border:1px solid #475569;
+    background:#1e293b;
+    color:#fff;
+    font-weight:900;
+  }
+  .layout-viewer-actions button.primary{
+    background:#7c3aed!important;
+    border-color:#7c3aed!important;
+  }
+
+  .layout-viewer-stage{
+    position:relative;
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at center,rgba(148,163,184,.14),transparent 60%),
+      #0b1220;
+    touch-action:none;
+    cursor:grab;
+  }
+  .layout-viewer-stage.dragging{cursor:grabbing}
+
+  .layout-viewer-world{
+    position:absolute;
+    left:0;
+    top:0;
+    transform-origin:0 0;
+    will-change:transform;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .layout-viewer-world svg{
+    display:block;
+    width:820px;
+    height:510px;
+    max-width:none!important;
+    background:#fff;
+    border-radius:16px;
+    box-shadow:0 18px 60px rgba(0,0,0,.38);
+  }
+
+  .layout-viewer-hint{
+    position:absolute;
+    left:50%;
+    bottom:14px;
+    transform:translateX(-50%);
+    z-index:3;
+    padding:7px 11px;
+    border-radius:999px;
+    background:rgba(15,23,42,.78);
+    color:#e2e8f0;
+    font-size:10px;
+    font-weight:800;
+    pointer-events:none;
+    white-space:nowrap;
+    opacity:.9;
+  }
+
+  body.layout-viewer-open{
+    overflow:hidden!important;
+    touch-action:none;
+  }
+
+  @media(max-width:980px){
+    .preview-modal{display:none!important} /* replaced by full-screen touch viewer */
+    .leader-open-btn{font-size:13px;padding:11px}
+    .layout-viewer-head{
+      padding-left:10px;
+      padding-right:10px;
+    }
+    .layout-viewer-actions button{
+      width:40px;height:40px;
+    }
+    .layout-viewer-hint{
+      bottom:max(14px,env(safe-area-inset-bottom));
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -2277,6 +2414,200 @@ const db = getFirestore(firebaseApp);
     }
   }
 
+
+  // ---------- Mobile-first fullscreen layout viewer ----------
+  let layoutViewerEntry=null;
+  let viewerScale=1;
+  let viewerX=0;
+  let viewerY=0;
+  let viewerPointers=new Map();
+  let viewerGesture=null;
+  let viewerLastTap=0;
+
+  function applyViewerTransform(){
+    const world=document.getElementById('layoutViewerWorld');
+    world.style.transform=`translate(${viewerX}px,${viewerY}px) scale(${viewerScale})`;
+  }
+
+  function viewerFit(){
+    const stage=document.getElementById('layoutViewerStage');
+    if(!stage) return;
+    const rect=stage.getBoundingClientRect();
+    const baseW=820, baseH=510;
+    const margin=18;
+    const sx=(rect.width-margin*2)/baseW;
+    const sy=(rect.height-margin*2)/baseH;
+    viewerScale=Math.max(.25,Math.min(2.8,Math.min(sx,sy)));
+    viewerX=(rect.width-baseW*viewerScale)/2;
+    viewerY=(rect.height-baseH*viewerScale)/2;
+    applyViewerTransform();
+  }
+
+  function viewerZoomAt(factor,clientX=null,clientY=null){
+    const stage=document.getElementById('layoutViewerStage');
+    const rect=stage.getBoundingClientRect();
+    if(clientX==null){
+      clientX=rect.left+rect.width/2;
+      clientY=rect.top+rect.height/2;
+    }
+
+    const localX=clientX-rect.left;
+    const localY=clientY-rect.top;
+    const worldX=(localX-viewerX)/viewerScale;
+    const worldY=(localY-viewerY)/viewerScale;
+
+    const next=Math.max(.25,Math.min(4.5,viewerScale*factor));
+    viewerX=localX-worldX*next;
+    viewerY=localY-worldY*next;
+    viewerScale=next;
+    applyViewerTransform();
+  }
+
+  function openFullscreenLayoutViewer(entry){
+    layoutViewerEntry=entry;
+    const viewer=document.getElementById('layoutViewer');
+    document.getElementById('layoutViewerTitle').textContent=entry?.title||'Layout';
+    const likes=Number(entry?.score||0);
+    const auto=Number.isFinite(entry?.autoScore)?` · ✨ Auto ${entry.autoScore}/100`:'';
+    document.getElementById('layoutViewerMeta').textContent=`♥ ${likes} Likes${auto}`;
+    renderStaticPreview(document.getElementById('layoutViewerSvg'),entry?.items||[]);
+    viewer.classList.add('open');
+    viewer.setAttribute('aria-hidden','false');
+    document.body.classList.add('layout-viewer-open');
+
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(viewerFit);
+    });
+  }
+
+  function closeFullscreenLayoutViewer(){
+    const viewer=document.getElementById('layoutViewer');
+    viewer.classList.remove('open');
+    viewer.setAttribute('aria-hidden','true');
+    document.body.classList.remove('layout-viewer-open');
+    viewerPointers.clear();
+    viewerGesture=null;
+  }
+
+  function initFullscreenLayoutViewer(){
+    const viewer=document.getElementById('layoutViewer');
+    const stage=document.getElementById('layoutViewerStage');
+
+    document.getElementById('layoutViewerClose').onclick=closeFullscreenLayoutViewer;
+    document.getElementById('layoutViewerFit').onclick=viewerFit;
+    document.getElementById('layoutViewerZoomIn').onclick=()=>viewerZoomAt(1.25);
+    document.getElementById('layoutViewerZoomOut').onclick=()=>viewerZoomAt(1/1.25);
+
+    stage.addEventListener('wheel',e=>{
+      e.preventDefault();
+      viewerZoomAt(e.deltaY<0?1.16:1/1.16,e.clientX,e.clientY);
+    },{passive:false});
+
+    stage.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      viewerPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+      const now=Date.now();
+      if(viewerPointers.size===1 && now-viewerLastTap<300){
+        viewerLastTap=0;
+        viewerFit();
+        return;
+      }
+      if(viewerPointers.size===1) viewerLastTap=now;
+
+      try{stage.setPointerCapture(e.pointerId)}catch(_){}
+
+      if(viewerPointers.size===1){
+        viewerGesture={
+          type:'pan',
+          pointerId:e.pointerId,
+          startX:e.clientX,
+          startY:e.clientY,
+          originX:viewerX,
+          originY:viewerY
+        };
+        stage.classList.add('dragging');
+      }else if(viewerPointers.size===2){
+        const pts=[...viewerPointers.values()];
+        const cx=(pts[0].x+pts[1].x)/2;
+        const cy=(pts[0].y+pts[1].y)/2;
+        const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+        const rect=stage.getBoundingClientRect();
+        const lx=cx-rect.left, ly=cy-rect.top;
+        viewerGesture={
+          type:'pinch',
+          startDist:dist,
+          startScale:viewerScale,
+          worldX:(lx-viewerX)/viewerScale,
+          worldY:(ly-viewerY)/viewerScale
+        };
+      }
+    });
+
+    stage.addEventListener('pointermove',e=>{
+      if(!viewerPointers.has(e.pointerId)) return;
+      viewerPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+      if(viewerPointers.size===1 && viewerGesture?.type==='pan'){
+        viewerX=viewerGesture.originX+(e.clientX-viewerGesture.startX);
+        viewerY=viewerGesture.originY+(e.clientY-viewerGesture.startY);
+        applyViewerTransform();
+      }else if(viewerPointers.size===2){
+        const pts=[...viewerPointers.values()];
+        const cx=(pts[0].x+pts[1].x)/2;
+        const cy=(pts[0].y+pts[1].y)/2;
+        const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+        const stageRect=stage.getBoundingClientRect();
+
+        if(viewerGesture?.type!=='pinch'){
+          const lx=cx-stageRect.left,ly=cy-stageRect.top;
+          viewerGesture={
+            type:'pinch',
+            startDist:dist,
+            startScale:viewerScale,
+            worldX:(lx-viewerX)/viewerScale,
+            worldY:(ly-viewerY)/viewerScale
+          };
+        }
+
+        const next=Math.max(.25,Math.min(4.5,viewerGesture.startScale*(dist/viewerGesture.startDist)));
+        const lx=cx-stageRect.left,ly=cy-stageRect.top;
+        viewerX=lx-viewerGesture.worldX*next;
+        viewerY=ly-viewerGesture.worldY*next;
+        viewerScale=next;
+        applyViewerTransform();
+      }
+    });
+
+    function endViewerPointer(e){
+      viewerPointers.delete(e.pointerId);
+      try{stage.releasePointerCapture(e.pointerId)}catch(_){}
+      if(viewerPointers.size===0){
+        viewerGesture=null;
+        stage.classList.remove('dragging');
+      }else if(viewerPointers.size===1){
+        const [p]=viewerPointers.values();
+        viewerGesture={
+          type:'pan',
+          pointerId:[...viewerPointers.keys()][0],
+          startX:p.x,startY:p.y,
+          originX:viewerX,originY:viewerY
+        };
+      }
+    }
+
+    stage.addEventListener('pointerup',endViewerPointer);
+    stage.addEventListener('pointercancel',endViewerPointer);
+
+    viewer.addEventListener('keydown',e=>{
+      if(e.key==='Escape') closeFullscreenLayoutViewer();
+    });
+
+    window.addEventListener('resize',()=>{
+      if(viewer.classList.contains('open')) viewerFit();
+    });
+  }
+
   function renderLeaderboard(){
     const box=document.getElementById('leaderboard');
     if(!box) return;
@@ -2289,17 +2620,17 @@ const db = getFirestore(firebaseApp);
     ranked.forEach((entry,idx)=>{
       const card=document.createElement('article');
       card.className='leader-card leader-card-click';
-      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div><button class="leader-open-btn">🔍 Größer ansehen</button></div>`;
+      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div class="leader-preview-hit" style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div><button class="leader-open-btn">🔍 Größer ansehen</button></div>`;
       renderStaticPreview(card.querySelector('svg'),entry.items);
       card.addEventListener('click',e=>{
         if(e.target.tagName==='BUTTON' || e.target.closest('.leader-open-btn')){
           e.stopPropagation();
         }
-        openLayoutPreview(entry);
+        openFullscreenLayoutViewer(entry);
       });
       card.querySelector('.leader-open-btn').addEventListener('click',e=>{
         e.stopPropagation();
-        openLayoutPreview(entry);
+        openFullscreenLayoutViewer(entry);
       });
       box.appendChild(card);
     });
@@ -2413,6 +2744,7 @@ const db = getFirestore(firebaseApp);
 
   document.body.dataset.view='layout';
   initLayoutPreviewModal();
+  initFullscreenLayoutViewer();
   load();
   fitMap();
   renderAll();
@@ -2443,6 +2775,27 @@ const db = getFirestore(firebaseApp);
         <svg id="layoutPreviewSvg"></svg>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="layout-viewer" id="layoutViewer" aria-hidden="true">
+  <div class="layout-viewer-head">
+    <div class="layout-viewer-title">
+      <strong id="layoutViewerTitle">Layout</strong>
+      <span id="layoutViewerMeta">Community Layout</span>
+    </div>
+    <div class="layout-viewer-actions">
+      <button id="layoutViewerZoomOut" aria-label="Herauszoomen">−</button>
+      <button id="layoutViewerFit" aria-label="Einpassen">Fit</button>
+      <button id="layoutViewerZoomIn" class="primary" aria-label="Hineinzoomen">＋</button>
+      <button id="layoutViewerClose" aria-label="Schließen">✕</button>
+    </div>
+  </div>
+  <div class="layout-viewer-stage" id="layoutViewerStage">
+    <div class="layout-viewer-world" id="layoutViewerWorld">
+      <svg id="layoutViewerSvg"></svg>
+    </div>
+    <div class="layout-viewer-hint">Pinch = Zoom · Ziehen = Bewegen · Doppeltippen = Fit</div>
   </div>
 </div>
 </body>
