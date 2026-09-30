@@ -937,7 +937,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung behandelt die Stehlampe explizit als einzelnes Lichtobjekt und betont zusätzlich den Sonneneinfall: mit klareren Lichtflächen, stärkeren Fenster-Beams und deutlicherer Aufhellung im Raum.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung behandelt die Stehlampe explizit als einzelnes Lichtobjekt und nutzt eine korrigierte Sonnenausrichtung. Grundlage: Wenn das iPhone mit normaler Bildschirmorientierung gegen die Wand A–B zeigt, misst der Kompass 275° W. Daraus folgt für den Plan: oben ≈ 275°, rechts ≈ 5°, unten ≈ 95°, links ≈ 185°.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1786,8 +1786,8 @@ const db = getFirestore(firebaseApp);
 
 
   // ---------- 24h lighting: 2D lightmap + furniture shading ----------
-  const PLAN_X_AZ = 230;
-  const PLAN_Y_AZ = 320;
+  const PLAN_X_AZ = 5;
+  const PLAN_Y_AZ = 95;
 
   const ROOM_POLYGON = [
     {x:0,y:0},{x:496,y:0},{x:496,y:67},{x:506,y:67},{x:506,y:0},
