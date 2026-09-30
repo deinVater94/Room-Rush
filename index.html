@@ -843,6 +843,7 @@
       </g>
       <g id="sunlightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
       <g id="roomLightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
+      <g id="labelLayer" pointer-events="none"></g>
     </svg>
   </div>
 
@@ -902,7 +903,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap: Wände begrenzen Lampenlicht und die Helligkeit fällt weich mit der Entfernung ab.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap mit Möbel-Schattierung: Wände begrenzen Lampenlicht, Möbel bekommen gerichtete Schatten und ihre Helligkeit passt sich der Beleuchtung an.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1054,6 +1055,7 @@ const db = getFirestore(firebaseApp);
   const svg = document.getElementById('plan');
   const roomFill = document.getElementById('roomFill');
   const furnitureLayer = document.getElementById('furnitureLayer');
+  const labelLayer = document.getElementById('labelLayer');
   const catalogEl = document.getElementById('catalog');
   const snapBox = document.getElementById('snap');
   const layoutView = document.getElementById('layoutView');
@@ -1430,17 +1432,6 @@ const db = getFirestore(firebaseApp);
 
     appendFootprintOverlays(g,item,def,status,isSelected);
 
-    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
-    text.setAttribute('x',0);
-    text.setAttribute('y',itemLabelOffset(item,def));
-    text.setAttribute('text-anchor','middle');
-    text.setAttribute('font-size','9.8');
-    text.setAttribute('font-weight',isSelected ? '900' : '800');
-    text.setAttribute('fill',status.ok ? '#111827' : '#991b1b');
-    text.setAttribute('pointer-events','none');
-    text.textContent=def.name;
-    g.appendChild(text);
-
     g.addEventListener('pointerdown',e=>{
       e.stopPropagation();
       selectedId=item.id;
@@ -1511,6 +1502,44 @@ const db = getFirestore(firebaseApp);
       selectedId=item.id;
       renderAll();
     });
+    return g;
+  }
+
+
+  function createItemLabel(item){
+    const def=defs[item.type];
+    const status=statusFor(item);
+
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('transform',`translate(${item.x} ${item.y})`);
+    g.setAttribute('pointer-events','none');
+
+    const y=itemLabelOffset(item,def);
+
+    const halo=document.createElementNS('http://www.w3.org/2000/svg','text');
+    halo.setAttribute('x',0);
+    halo.setAttribute('y',y);
+    halo.setAttribute('text-anchor','middle');
+    halo.setAttribute('font-size','10.5');
+    halo.setAttribute('font-weight',item.id===selectedId ? '900' : '800');
+    halo.setAttribute('fill','rgba(255,255,255,.96)');
+    halo.setAttribute('stroke','rgba(255,255,255,.96)');
+    halo.setAttribute('stroke-width','3.8');
+    halo.setAttribute('stroke-linejoin','round');
+    halo.setAttribute('paint-order','stroke');
+    halo.textContent=def.name;
+    g.appendChild(halo);
+
+    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x',0);
+    text.setAttribute('y',y);
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('font-size','10.5');
+    text.setAttribute('font-weight',item.id===selectedId ? '900' : '800');
+    text.setAttribute('fill',status.ok ? '#111827' : '#991b1b');
+    text.textContent=def.name;
+    g.appendChild(text);
+
     return g;
   }
 
@@ -1721,9 +1750,8 @@ const db = getFirestore(firebaseApp);
 
 
 
-  // ---------- 24h lighting: low-cost 2D lightmap ----------
-  // No animation loop and no 3D engine: lighting is recalculated only when the
-  // simulated time changes or furniture is dropped/rotated.
+
+  // ---------- 24h lighting: 2D lightmap + furniture shading ----------
   const PLAN_X_AZ = 230;
   const PLAN_Y_AZ = 320;
 
@@ -1794,12 +1822,9 @@ const db = getFirestore(firebaseApp);
 
   function roomSegments(){
     const out=[];
-    for(let i=0;i<ROOM_POLYGON.length;i++){
-      out.push([ROOM_POLYGON[i],ROOM_POLYGON[(i+1)%ROOM_POLYGON.length]]);
-    }
+    for(let i=0;i<ROOM_POLYGON.length;i++) out.push([ROOM_POLYGON[i],ROOM_POLYGON[(i+1)%ROOM_POLYGON.length]]);
     return out;
   }
-
   const LIGHT_WALLS = roomSegments();
 
   function raySegmentIntersection(origin,angle,a,b){
@@ -1823,7 +1848,6 @@ const db = getFirestore(firebaseApp);
         rays.push(ang-eps,ang,ang+eps);
       }
     }
-
     const hits=[];
     for(const ang of rays){
       let best=null;
@@ -1833,9 +1857,7 @@ const db = getFirestore(firebaseApp);
       }
       if(best) hits.push({...best,ang});
     }
-
     hits.sort((a,b)=>a.ang-b.ang);
-    // Remove near-duplicates to keep the generated SVG tiny.
     const clean=[];
     for(const p of hits){
       const last=clean[clean.length-1];
@@ -1848,16 +1870,29 @@ const db = getFirestore(firebaseApp);
     return points.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   }
 
+  function pointInPolygon(point,poly){
+    let inside=false;
+    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+      const xi=poly[i].x, yi=poly[i].y, xj=poly[j].x, yj=poly[j].y;
+      const hit=((yi>point.y)!=(yj>point.y)) &&
+        (point.x < (xj-xi)*(point.y-yi)/((yj-yi)||1e-9)+xi);
+      if(hit) inside=!inside;
+    }
+    return inside;
+  }
+
+  function polygonMarkup(points,fill,opacity,filter=''){
+    const f=filter?` filter="${filter}"`:'';
+    return `<polygon points="${pointsAttr(points)}" fill="${fill}" opacity="${opacity.toFixed(3)}"${f}/>`;
+  }
+
   function lampLightMarkup(item,intensity){
     const poly=visibilityPolygon({x:item.x,y:item.y});
     if(poly.length<3) return '';
-
     const id=`lampGrad${++lightGradientSerial}`;
     const range=340;
     const brightness=clamp(intensity,.15,1);
 
-    // Neutral-white with a very subtle cool edge. The radial gradient is
-    // clipped by the room visibility polygon, so walls actually stop light.
     return `
       <defs>
         <radialGradient id="${id}" gradientUnits="userSpaceOnUse"
@@ -1886,21 +1921,13 @@ const db = getFirestore(firebaseApp);
     const elev=sunElev*Math.PI/180;
     const normalElev=w.roofNormalElev*Math.PI/180;
     const azDiff=angleDiff(sunAz,w.roofNormalAz)*Math.PI/180;
-    const dot=
-      Math.cos(elev)*Math.cos(normalElev)*Math.cos(azDiff)+
-      Math.sin(elev)*Math.sin(normalElev);
+    const dot=Math.cos(elev)*Math.cos(normalElev)*Math.cos(azDiff)+Math.sin(elev)*Math.sin(normalElev);
     return Math.max(0,dot);
   }
 
-  function polygonMarkup(points,fill,opacity,filter=''){
-    const f=filter?` filter="${filter}"`:'';
-    return `<polygon points="${pointsAttr(points)}" fill="${fill}" opacity="${opacity.toFixed(3)}"${f}/>`;
-  }
-
-  function wallSunMarkup(w,sunAz,sunElev,daylight){
+  function getWallSunGeom(w,sunAz,sunElev,daylight){
     const exposure=wallWindowExposure(w,sunAz,sunElev);
-    if(exposure<.12) return {html:'',active:false};
-
+    if(exposure<.12) return {active:false};
     const ray=mapVectorFromAzimuth((sunAz+180)%360);
     const elev=Math.max(8,sunElev)*Math.PI/180;
     const depth=clamp(120/Math.tan(elev),95,340);
@@ -1908,9 +1935,24 @@ const db = getFirestore(firebaseApp);
     const p3={x:p2.x+ray.x*depth,y:p2.y+ray.y*depth};
     const p4={x:p1.x+ray.x*depth,y:p1.y+ray.y*depth};
     const alpha=clamp(.045+exposure*daylight*.18,.04,.22);
+    return {active:true, exposure, alpha, poly:[p1,p2,p3,p4], ray, depth};
+  }
 
-    const broad=polygonMarkup([p1,p2,p3,p4],'#fff6d6',alpha*.65,'url(#sunBlur)');
+  function getRoofSunGeom(w,sunAz,sunElev,daylight){
+    const exposure=roofWindowExposure(w,sunAz,sunElev);
+    if(exposure<.10) return {active:false};
+    const ray=mapVectorFromAzimuth((sunAz+180)%360);
+    const elev=Math.max(10,sunElev)*Math.PI/180;
+    const travel=clamp(95/Math.tan(elev),50,215);
+    const cx=w.cx+ray.x*travel*.55;
+    const cy=w.cy+ray.y*travel*.55;
+    const alpha=clamp(.04+exposure*daylight*.18,.04,.21);
+    return {active:true, exposure, alpha, cx, cy, rx:72, ry:50, ray};
+  }
 
+  function wallSunMarkup(geom,w){
+    if(!geom.active) return {html:'',active:false};
+    const broad=polygonMarkup(geom.poly,'#fff6d6',geom.alpha*.65,'url(#sunBlur)');
     if(w.blinds){
       const dx=w.x2-w.x1,dy=w.y2-w.y1;
       let strips='';
@@ -1918,39 +1960,102 @@ const db = getFirestore(firebaseApp);
         const a=i/7,b=(i+.42)/7;
         const s1={x:w.x1+dx*a,y:w.y1+dy*a};
         const s2={x:w.x1+dx*b,y:w.y1+dy*b};
-        strips += polygonMarkup([
-          s1,s2,
-          {x:s2.x+ray.x*depth,y:s2.y+ray.y*depth},
-          {x:s1.x+ray.x*depth,y:s1.y+ray.y*depth}
-        ],'#fff8df',alpha*.72);
+        strips += polygonMarkup([s1,s2,{x:s2.x+geom.ray.x*geom.depth,y:s2.y+geom.ray.y*geom.depth},{x:s1.x+geom.ray.x*geom.depth,y:s1.y+geom.ray.y*geom.depth}],'#fff8df',geom.alpha*.72);
       }
       return {html:broad+strips,active:true};
     }
-
-    return {html:broad+polygonMarkup([p1,p2,p3,p4],'#fffaf0',alpha*.32),active:true};
+    return {html:broad+polygonMarkup(geom.poly,'#fffaf0',geom.alpha*.32),active:true};
   }
 
-  function roofSunMarkup(w,sunAz,sunElev,daylight){
-    const exposure=roofWindowExposure(w,sunAz,sunElev);
-    if(exposure<.10) return {html:'',active:false};
-    const ray=mapVectorFromAzimuth((sunAz+180)%360);
-    const elev=Math.max(10,sunElev)*Math.PI/180;
-    const travel=clamp(95/Math.tan(elev),50,215);
-    const cx=w.cx+ray.x*travel*.55;
-    const cy=w.cy+ray.y*travel*.55;
-    const alpha=clamp(.04+exposure*daylight*.18,.04,.21);
+  function roofSunMarkup(geom){
+    if(!geom.active) return {html:'',active:false};
     return {
       html:
-        `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="105" ry="76" fill="#fff9e8" opacity="${(alpha*.52).toFixed(3)}" filter="url(#sunBlur)"/>`+
-        `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="72" ry="50" fill="#ffffff" opacity="${(alpha*.22).toFixed(3)}"/>`,
+        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="105" ry="76" fill="#fff9e8" opacity="${(geom.alpha*.52).toFixed(3)}" filter="url(#sunBlur)"/>`+
+        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="${geom.rx.toFixed(1)}" ry="${geom.ry.toFixed(1)}" fill="#ffffff" opacity="${(geom.alpha*.22).toFixed(3)}"/>`,
       active:true
     };
   }
 
-  function sunlightMarkup(w,sunAz,sunElev,daylight){
-    return w.type==='roof'
-      ? roofSunMarkup(w,sunAz,sunElev,daylight)
-      : wallSunMarkup(w,sunAz,sunElev,daylight);
+  function sunlightGeometry(sunAz,sunElev,daylight){
+    const geoms=[];
+    for(const w of WINDOWS){
+      const geom = w.type==='roof' ? getRoofSunGeom(w,sunAz,sunElev,daylight) : getWallSunGeom(w,sunAz,sunElev,daylight);
+      geoms.push({window:w, ...geom});
+    }
+    return geoms;
+  }
+
+  function pointInEllipse(pt,cx,cy,rx,ry){
+    const dx=(pt.x-cx)/rx, dy=(pt.y-cy)/ry;
+    return dx*dx+dy*dy<=1;
+  }
+
+  function itemCenter(item){ return {x:item.x,y:item.y}; }
+
+  function computeLampInfos(daylight){
+    const lamps=items.filter(i=>i.type==='floorlamp');
+    const intensity=clamp((.42-daylight)/.42,.20,1);
+    return lamps.map(l=>({lamp:l, poly:visibilityPolygon({x:l.x,y:l.y}), range:340, intensity}));
+  }
+
+  function computeItemLightModel(item, lampInfos, sunGeoms, daylight, sunAz){
+    const pt=itemCenter(item);
+    let brightness=0.58 + daylight*.22;
+    let strongest=0;
+    let dominant={dx:0,dy:1};
+
+    for(const li of lampInfos){
+      if(item.id===li.lamp.id) continue;
+      if(!pointInPolygon(pt, li.poly)) continue;
+      const dx=pt.x-li.lamp.x, dy=pt.y-li.lamp.y;
+      const dist=Math.hypot(dx,dy);
+      if(dist>li.range) continue;
+      const hit=li.intensity*Math.pow(1 - dist/li.range, 1.45);
+      brightness += hit*.95;
+      if(hit>strongest){
+        strongest=hit;
+        const len=Math.hypot(dx,dy)||1;
+        dominant={dx:dx/len,dy:dy/len};
+      }
+    }
+
+    for(const sg of sunGeoms){
+      if(!sg.active) continue;
+      let hit=0;
+      if(sg.window.type==='roof'){
+        if(pointInEllipse(pt, sg.cx, sg.cy, 105, 76)) hit=sg.exposure*.42;
+      }else{
+        if(pointInPolygon(pt, sg.poly)) hit=sg.exposure*.50;
+      }
+      brightness += hit;
+      if(hit>strongest){
+        strongest=hit;
+        const rv = sg.ray || mapVectorFromAzimuth((sunAz+180)%360);
+        dominant={dx:rv.x,dy:rv.y};
+      }
+    }
+
+    const b=clamp(brightness, .46, 1.34);
+    const shadowAlpha=clamp(.16 + strongest*.22 + (1-daylight)*.12, .16, .42);
+    const shadowBlur=clamp(2.8 + strongest*4.5, 2.8, 7.5);
+    const shadowOffset=clamp(2.2 + strongest*10.5, 2.2, 11.5);
+    return {brightness:b, shadowAlpha, shadowBlur, shadowOffset, dominant};
+  }
+
+  function applyFurnitureLighting(lampInfos, sunGeoms, daylight, sunAz){
+    for(const item of items){
+      const g=furnitureLayer.querySelector(`g[data-id="${item.id}"]`);
+      if(!g) continue;
+      const model=computeItemLightModel(item, lampInfos, sunGeoms, daylight, sunAz);
+      const dx=(model.dominant.dx*model.shadowOffset).toFixed(2);
+      const dy=(model.dominant.dy*model.shadowOffset).toFixed(2);
+      g.style.filter=
+        `brightness(${model.brightness.toFixed(3)}) `+
+        `saturate(${(0.94 + (model.brightness-0.7)*0.18).toFixed(3)}) `+
+        `drop-shadow(${dx}px ${dy}px ${model.shadowBlur.toFixed(2)}px rgba(15,23,42,${model.shadowAlpha.toFixed(3)}))`;
+      g.style.opacity='1';
+    }
   }
 
   function renderLighting(){
@@ -1958,40 +2063,40 @@ const db = getFirestore(firebaseApp);
     const darkness=1-daylight;
     const sunAz=sunAzimuth(simulatedHour);
     const sunElev=sunElevation(simulatedHour);
+
     const ambient=document.getElementById('ambientShade');
     const roomLights=document.getElementById('roomLightLayer');
     const sunlight=document.getElementById('sunlightLayer');
     const autoLights=document.getElementById('autoRoomLights')?.checked ?? true;
 
-    // Ambient darkness, not a black texture: blue-toned multiply shading.
     if(ambient){
       const opacity=clamp(darkness*.44,0,.44);
       ambient.setAttribute('opacity',opacity.toFixed(3));
       ambient.setAttribute('fill',darkness>.75?'#0a1426':'#17233a');
     }
 
+    const lampInfos = autoLights && daylight<.38 ? computeLampInfos(daylight) : [];
+    const sunGeoms = sunlightGeometry(sunAz,sunElev,daylight);
+
     if(roomLights){
       lightGradientSerial=0;
       let out='';
-      if(autoLights && daylight<.38){
-        const intensity=clamp((.42-daylight)/.42,.20,1);
-        for(const item of items.filter(i=>i.type==='floorlamp')){
-          out += lampLightMarkup(item,intensity);
-        }
-      }
+      for(const li of lampInfos) out += lampLightMarkup(li.lamp, li.intensity);
       roomLights.innerHTML=out;
     }
 
     let activeWindows=[];
     if(sunlight){
       let out='';
-      for(const w of WINDOWS){
-        const result=sunlightMarkup(w,sunAz,sunElev,daylight);
-        if(result.active) activeWindows.push(w.name);
-        out += result.html;
+      for(const sg of sunGeoms){
+        if(!sg.active) continue;
+        activeWindows.push(sg.window.name);
+        out += sg.window.type==='roof' ? roofSunMarkup(sg).html : wallSunMarkup(sg, sg.window).html;
       }
       sunlight.innerHTML=out;
     }
+
+    applyFurnitureLighting(lampInfos, sunGeoms, daylight, sunAz ?? 180);
 
     const time=document.getElementById('lightTimeLabel');
     const phase=document.getElementById('lightPhaseLabel');
@@ -2022,6 +2127,7 @@ const db = getFirestore(firebaseApp);
     document.getElementById('lightNightBtn').onclick=()=>setSimulatedHour(23);
     setSimulatedHour(13);
   }
+
 
 
 
@@ -3025,7 +3131,9 @@ const db = getFirestore(firebaseApp);
 
   function renderAll(){
     furnitureLayer.innerHTML='';
+    labelLayer.innerHTML='';
     for(const item of items) furnitureLayer.appendChild(createItemGroup(item));
+    for(const item of items) labelLayer.appendChild(createItemLabel(item));
     renderCatalog();renderSelected();updateHUD();renderSavedLayouts();renderLighting();
   }
 
