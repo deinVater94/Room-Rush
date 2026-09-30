@@ -719,6 +719,26 @@
         <filter id="sunSoft" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="10"/>
         </filter>
+        <linearGradient id="floorBase" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f7fafc"/>
+          <stop offset="38%" stop-color="#edf2f7"/>
+          <stop offset="72%" stop-color="#e5ebf1"/>
+          <stop offset="100%" stop-color="#dae2ea"/>
+        </linearGradient>
+        <radialGradient id="floorCenterGlow" cx="42%" cy="42%" r="72%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity=".74"/>
+          <stop offset="55%" stop-color="#f8fbff" stop-opacity=".26"/>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="floorVignette" cx="42%" cy="45%" r="78%">
+          <stop offset="55%" stop-color="#000000" stop-opacity="0"/>
+          <stop offset="85%" stop-color="#1f2937" stop-opacity=".08"/>
+          <stop offset="100%" stop-color="#111827" stop-opacity=".18"/>
+        </radialGradient>
+        <radialGradient id="ambientVignetteGrad" cx="45%" cy="45%" r="78%">
+          <stop offset="52%" stop-color="#0f172a" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#081120" stop-opacity="1"/>
+        </radialGradient>
 
       </defs>
 
@@ -726,7 +746,13 @@
 
       <path id="roomFill"
         d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
-        fill="#fff" stroke="none"/>
+        fill="url(#floorBase)" stroke="none"/>
+
+      <g id="roomStyleLayer" pointer-events="none">
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="url(#floorCenterGlow)" opacity=".88"/>
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="url(#floorVignette)" opacity=".72" style="mix-blend-mode:multiply"/>
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="none" stroke="rgba(15,23,42,.12)" stroke-width="18" filter="url(#lightBlur)"/>
+      </g>
 
       <!-- NIEDRIGE ZONE: fixed gameplay height restriction -->
       <g>
@@ -839,7 +865,10 @@
       <g id="ambientLightLayer" pointer-events="none" clip-path="url(#roomClip)">
         <path id="ambientShade"
           d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
-          fill="#0a1426" opacity="0" style="mix-blend-mode:multiply"/>
+          fill="#152338" opacity="0" style="mix-blend-mode:multiply"/>
+        <path id="ambientVignette"
+          d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
+          fill="url(#ambientVignetteGrad)" opacity="0" style="mix-blend-mode:multiply"/>
       </g>
       <g id="sunlightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
       <g id="roomLightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
@@ -903,7 +932,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap mit Möbel-Schattierung: Wände begrenzen Lampenlicht, Möbel bekommen gerichtete Schatten und ihre Helligkeit passt sich der Beleuchtung an.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap im illustrativen Stil: weiches Raum-Ambient, sanfte Vignette, gerichtete Möbel-Schatten und eine beleuchtete Bodenwirkung ähnlich einem Game-Render.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1890,23 +1919,29 @@ const db = getFirestore(firebaseApp);
     const poly=visibilityPolygon({x:item.x,y:item.y});
     if(poly.length<3) return '';
     const id=`lampGrad${++lightGradientSerial}`;
-    const range=340;
+    const range=300;
     const brightness=clamp(intensity,.15,1);
 
     return `
       <defs>
         <radialGradient id="${id}" gradientUnits="userSpaceOnUse"
           cx="${item.x}" cy="${item.y}" r="${range}">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.94*brightness).toFixed(3)}"/>
-          <stop offset="16%" stop-color="#fffefa" stop-opacity="${(0.84*brightness).toFixed(3)}"/>
-          <stop offset="38%" stop-color="#f8fbff" stop-opacity="${(0.58*brightness).toFixed(3)}"/>
-          <stop offset="66%" stop-color="#edf4ff" stop-opacity="${(0.28*brightness).toFixed(3)}"/>
-          <stop offset="88%" stop-color="#dbeafe" stop-opacity="${(0.09*brightness).toFixed(3)}"/>
-          <stop offset="100%" stop-color="#dbeafe" stop-opacity="0"/>
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.90*brightness).toFixed(3)}"/>
+          <stop offset="18%" stop-color="#fffefa" stop-opacity="${(0.82*brightness).toFixed(3)}"/>
+          <stop offset="40%" stop-color="#f4f8ff" stop-opacity="${(0.46*brightness).toFixed(3)}"/>
+          <stop offset="74%" stop-color="#dce7f7" stop-opacity="${(0.14*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#dce7f7" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="${id}Warm" gradientUnits="userSpaceOnUse"
+          cx="${item.x}" cy="${item.y}" r="130">
+          <stop offset="0%" stop-color="#fffdf7" stop-opacity="${(0.30*brightness).toFixed(3)}"/>
+          <stop offset="38%" stop-color="#ffe8b8" stop-opacity="${(0.18*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#ffe8b8" stop-opacity="0"/>
         </radialGradient>
       </defs>
       <polygon points="${pointsAttr(poly)}" fill="url(#${id})" filter="url(#lightBlur)"/>
-      <circle cx="${item.x}" cy="${item.y}" r="58" fill="#ffffff" opacity="${(0.14*brightness).toFixed(3)}" filter="url(#lightBlur)"/>
+      <circle cx="${item.x}" cy="${item.y}" r="118" fill="url(#${id}Warm)" filter="url(#lightBlur)"/>
+      <circle cx="${item.x}" cy="${item.y}" r="30" fill="#ffffff" opacity="${(0.13*brightness).toFixed(3)}" filter="url(#lightBlur)"/>
     `;
   }
 
@@ -2050,9 +2085,11 @@ const db = getFirestore(firebaseApp);
       const model=computeItemLightModel(item, lampInfos, sunGeoms, daylight, sunAz);
       const dx=(model.dominant.dx*model.shadowOffset).toFixed(2);
       const dy=(model.dominant.dy*model.shadowOffset).toFixed(2);
+      const localBrightness = Math.max(.76, model.brightness);
       g.style.filter=
-        `brightness(${model.brightness.toFixed(3)}) `+
-        `saturate(${(0.94 + (model.brightness-0.7)*0.18).toFixed(3)}) `+
+        `brightness(${localBrightness.toFixed(3)}) `+
+        `contrast(1.02) `+
+        `saturate(${(0.98 + (localBrightness-0.78)*0.24).toFixed(3)}) `+
         `drop-shadow(${dx}px ${dy}px ${model.shadowBlur.toFixed(2)}px rgba(15,23,42,${model.shadowAlpha.toFixed(3)}))`;
       g.style.opacity='1';
     }
@@ -2065,14 +2102,19 @@ const db = getFirestore(firebaseApp);
     const sunElev=sunElevation(simulatedHour);
 
     const ambient=document.getElementById('ambientShade');
+    const ambientVignette=document.getElementById('ambientVignette');
     const roomLights=document.getElementById('roomLightLayer');
     const sunlight=document.getElementById('sunlightLayer');
     const autoLights=document.getElementById('autoRoomLights')?.checked ?? true;
 
     if(ambient){
-      const opacity=clamp(darkness*.44,0,.44);
+      const opacity=clamp(.05 + darkness*.28, .05, .33);
       ambient.setAttribute('opacity',opacity.toFixed(3));
-      ambient.setAttribute('fill',darkness>.75?'#0a1426':'#17233a');
+      ambient.setAttribute('fill',darkness>.75?'#101a29':'#162338');
+    }
+    if(ambientVignette){
+      const vignetteOpacity=clamp(.04 + darkness*.22, .04, .28);
+      ambientVignette.setAttribute('opacity',vignetteOpacity.toFixed(3));
     }
 
     const lampInfos = autoLights && daylight<.38 ? computeLampInfos(daylight) : [];
