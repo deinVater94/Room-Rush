@@ -937,7 +937,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung behandelt die Stehlampe jetzt explizit als einzelnes Lichtobjekt: mit separatem Raum-Streulicht, gerichtetem Boden-Pool und eigenem Hotspot – näher am Referenzlook.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung behandelt die Stehlampe explizit als einzelnes Lichtobjekt und betont zusätzlich den Sonneneinfall: mit klareren Lichtflächen, stärkeren Fenster-Beams und deutlicherer Aufhellung im Raum.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -2004,7 +2004,7 @@ const db = getFirestore(firebaseApp);
     const p1={x:w.x1,y:w.y1}, p2={x:w.x2,y:w.y2};
     const p3={x:p2.x+ray.x*depth,y:p2.y+ray.y*depth};
     const p4={x:p1.x+ray.x*depth,y:p1.y+ray.y*depth};
-    const alpha=clamp(.045+exposure*daylight*.18,.04,.22);
+    const alpha=clamp(.08+exposure*daylight*.24,.08,.30);
     return {active:true, exposure, alpha, poly:[p1,p2,p3,p4], ray, depth};
   }
 
@@ -2016,13 +2016,23 @@ const db = getFirestore(firebaseApp);
     const travel=clamp(95/Math.tan(elev),50,215);
     const cx=w.cx+ray.x*travel*.55;
     const cy=w.cy+ray.y*travel*.55;
-    const alpha=clamp(.04+exposure*daylight*.18,.04,.21);
-    return {active:true, exposure, alpha, cx, cy, rx:72, ry:50, ray};
+    const alpha=clamp(.08+exposure*daylight*.22,.08,.28);
+    return {active:true, exposure, alpha, cx, cy, rx:86, ry:60, ray};
   }
 
   function wallSunMarkup(geom,w){
     if(!geom.active) return {html:'',active:false};
-    const broad=polygonMarkup(geom.poly,'#fff6d6',geom.alpha*.65,'url(#sunBlur)');
+
+    const broad=polygonMarkup(geom.poly,'#fff6d6',geom.alpha*.44,'url(#sunBlur)');
+    const fill=polygonMarkup(geom.poly,'#fff8e8',geom.alpha*.24);
+
+    // brighter near-window band so sunlight reads more clearly at the source
+    const p1=geom.poly[0], p2=geom.poly[1], p3=geom.poly[2], p4=geom.poly[3];
+    const t=0.26;
+    const q1={x:p1.x+(p4.x-p1.x)*t, y:p1.y+(p4.y-p1.y)*t};
+    const q2={x:p2.x+(p3.x-p2.x)*t, y:p2.y+(p3.y-p2.y)*t};
+    const windowBand=polygonMarkup([p1,p2,q2,q1],'#fffef8',geom.alpha*.58,'url(#lightBlur)');
+
     if(w.blinds){
       const dx=w.x2-w.x1,dy=w.y2-w.y1;
       let strips='';
@@ -2030,19 +2040,32 @@ const db = getFirestore(firebaseApp);
         const a=i/7,b=(i+.42)/7;
         const s1={x:w.x1+dx*a,y:w.y1+dy*a};
         const s2={x:w.x1+dx*b,y:w.y1+dy*b};
-        strips += polygonMarkup([s1,s2,{x:s2.x+geom.ray.x*geom.depth,y:s2.y+geom.ray.y*geom.depth},{x:s1.x+geom.ray.x*geom.depth,y:s1.y+geom.ray.y*geom.depth}],'#fff8df',geom.alpha*.72);
+        strips += polygonMarkup([
+          s1,s2,
+          {x:s2.x+geom.ray.x*geom.depth,y:s2.y+geom.ray.y*geom.depth},
+          {x:s1.x+geom.ray.x*geom.depth,y:s1.y+geom.ray.y*geom.depth}
+        ],'#fff9e8',geom.alpha*.85,'url(#lightBlur)');
       }
-      return {html:broad+strips,active:true};
+      return {html:broad+fill+windowBand+strips,active:true};
     }
-    return {html:broad+polygonMarkup(geom.poly,'#fffaf0',geom.alpha*.32),active:true};
+
+    const centerLine=polygonMarkup([
+      {x:p1.x+(p2.x-p1.x)*.20, y:p1.y+(p2.y-p1.y)*.20},
+      {x:p1.x+(p2.x-p1.x)*.80, y:p1.y+(p2.y-p1.y)*.80},
+      {x:p4.x+(p3.x-p4.x)*.80, y:p4.y+(p3.y-p4.y)*.80},
+      {x:p4.x+(p3.x-p4.x)*.20, y:p4.y+(p3.y-p4.y)*.20}
+    ],'#fffef5',geom.alpha*.20,'url(#sunBlur)');
+
+    return {html:broad+fill+windowBand+centerLine,active:true};
   }
 
   function roofSunMarkup(geom){
     if(!geom.active) return {html:'',active:false};
     return {
       html:
-        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="105" ry="76" fill="#fff9e8" opacity="${(geom.alpha*.52).toFixed(3)}" filter="url(#sunBlur)"/>`+
-        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="${geom.rx.toFixed(1)}" ry="${geom.ry.toFixed(1)}" fill="#ffffff" opacity="${(geom.alpha*.22).toFixed(3)}"/>`,
+        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="130" ry="92" fill="#fff7e2" opacity="${(geom.alpha*.34).toFixed(3)}" filter="url(#sunBlur)"/>`+
+        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="${(geom.rx*1.18).toFixed(1)}" ry="${(geom.ry*1.12).toFixed(1)}" fill="#fffbf2" opacity="${(geom.alpha*.46).toFixed(3)}" filter="url(#lightBlur)"/>`+
+        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="${(geom.rx*.62).toFixed(1)}" ry="${(geom.ry*.58).toFixed(1)}" fill="#ffffff" opacity="${(geom.alpha*.18).toFixed(3)}"/>`,
       active:true
     };
   }
@@ -2105,9 +2128,9 @@ const db = getFirestore(firebaseApp);
       if(!sg.active) continue;
       let hit=0;
       if(sg.window.type==='roof'){
-        if(pointInEllipse(pt, sg.cx, sg.cy, 105, 76)) hit=sg.exposure*.42;
+        if(pointInEllipse(pt, sg.cx, sg.cy, 130, 92)) hit=sg.exposure*.56;
       }else{
-        if(pointInPolygon(pt, sg.poly)) hit=sg.exposure*.50;
+        if(pointInPolygon(pt, sg.poly)) hit=sg.exposure*.62;
       }
       brightness += hit;
       if(hit>strongest){
