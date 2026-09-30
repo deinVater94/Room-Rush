@@ -493,63 +493,6 @@
   }
 
 
-  /* --- V10: detail preview modal --- */
-  .preview-modal{
-    position:fixed; inset:0; z-index:220;
-    display:none; align-items:center; justify-content:center;
-    background:rgba(15,23,42,.72); backdrop-filter:blur(8px);
-    padding:18px;
-  }
-  .preview-modal.open{display:flex}
-  .preview-panel{
-    width:min(1120px,100%); max-height:min(92vh,900px);
-    background:#fff; border-radius:22px; overflow:hidden;
-    box-shadow:0 24px 80px rgba(15,23,42,.35);
-    display:flex; flex-direction:column;
-  }
-  .preview-modal-head{
-    display:flex; align-items:center; gap:10px; justify-content:space-between;
-    padding:14px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc;
-  }
-  .preview-modal-title{
-    font-size:18px; font-weight:900; color:#111827;
-  }
-  .preview-modal-sub{
-    font-size:12px; color:#64748b; margin-top:2px;
-  }
-  .preview-modal-actions{display:flex; gap:8px; flex-wrap:wrap}
-  .preview-modal-actions button{min-width:42px}
-  .preview-canvas-wrap{
-    flex:1; min-height:340px; overflow:auto; background:#eef2f7;
-    padding:18px;
-  }
-  .preview-canvas{
-    display:inline-block; transform-origin:top left;
-    transition:transform .16s ease;
-  }
-  .preview-canvas svg{
-    width:980px; height:auto; display:block;
-    background:#fff; border-radius:20px; box-shadow:0 6px 24px rgba(15,23,42,.1)
-  }
-  .leader-card-click{
-    cursor:pointer;
-  }
-  .leader-card-click:hover{
-    transform:translateY(-1px);
-  }
-  .leader-open-btn{
-    width:100%; margin-top:8px;
-  }
-  @media(max-width:980px){
-    .preview-modal{padding:10px}
-    .preview-panel{max-height:95vh; border-radius:18px}
-    .preview-modal-head{padding:10px 12px; align-items:flex-start}
-    .preview-modal-title{font-size:15px}
-    .preview-modal-sub{font-size:11px}
-    .preview-canvas-wrap{padding:12px}
-    .preview-canvas svg{width:860px}
-  }
-
 
   /* --- V14: real mobile layout viewer --- */
   .leader-preview-hit{
@@ -687,6 +630,34 @@
     }
   }
 
+
+  /* --- V15: iOS/browser-chrome-safe viewer --- */
+  .layout-viewer{
+    width:100vw!important;
+    height:var(--visible-vh,100dvh)!important;
+    min-height:0!important;
+    max-height:var(--visible-vh,100dvh)!important;
+    top:0!important;
+    bottom:auto!important;
+  }
+  .layout-viewer-head{
+    min-height:50px;
+    padding:6px 8px!important;
+    padding-top:max(6px,env(safe-area-inset-top))!important;
+  }
+  .layout-viewer-actions{gap:4px}
+  .layout-viewer-actions button{
+    width:35px!important;height:35px!important;border-radius:10px!important;
+    font-size:11px!important;
+  }
+  .layout-viewer-title strong{font-size:13px!important}
+  .layout-viewer-title span{font-size:9px!important}
+  .layout-viewer-stage{flex:1 1 0!important;min-height:0!important;height:auto!important}
+  .layout-viewer-world svg{width:820px!important;height:510px!important;max-width:none!important;border-radius:10px!important}
+  @media(max-width:520px){
+    .layout-viewer-actions button{width:33px!important;height:33px!important}
+    .layout-viewer-hint{font-size:9px!important;padding:5px 8px!important}
+  }
 </style>
 </head>
 <body>
@@ -736,6 +707,12 @@
         <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".18"/>
         </filter>
+        <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fff7b2" stop-opacity=".95"/>
+          <stop offset="38%" stop-color="#fde68a" stop-opacity=".62"/>
+          <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+        </radialGradient>
+
       </defs>
 
       <rect id="worldBackground" x="-70" y="-70" width="920" height="585" fill="url(#grid)"/>
@@ -787,9 +764,9 @@
 
       <!-- Static corner prop -->
       <g id="routerCorner">
-        <rect x="0" y="440" width="49" height="25"
+        <rect x="15" y="440" width="49" height="25"
               fill="var(--fixedFill)" stroke="var(--fixed)" stroke-width="2.5"/>
-        <text x="24.5" y="436" text-anchor="middle"
+        <text x="39.5" y="436" text-anchor="middle"
               fill="#92400e" font-size="10" font-weight="800">FIXED</text>
       </g>
 
@@ -820,8 +797,37 @@
         <path d="M398 465A100 100 0 0 0 298 365" stroke-dasharray="5 4"/>
       </g>
 
+
+      <!-- Fenster-Guides -->
+      <g id="windowGuides" pointer-events="none">
+        <!-- Fenster 1: JA -->
+        <line x1="0" y1="147" x2="0" y2="217" stroke="#38bdf8" stroke-width="7" stroke-linecap="round"/>
+        <text x="12" y="186" fill="#0369a1" font-size="10" font-weight="800">F1</text>
+
+        <!-- Fenster 2: FE -->
+        <line x1="583" y1="0" x2="779" y2="0" stroke="#38bdf8" stroke-width="7" stroke-linecap="round"/>
+        <text x="681" y="15" text-anchor="middle" fill="#0369a1" font-size="10" font-weight="800">F2</text>
+
+        <!-- Fenster 3: Balkontür / Jalousien -->
+        <line x1="298" y1="465" x2="408" y2="465" stroke="#f59e0b" stroke-width="7" stroke-linecap="round"/>
+        <g stroke="#f59e0b" stroke-width="1.5" opacity=".9">
+          <line x1="305" y1="458" x2="319" y2="444"/>
+          <line x1="323" y1="458" x2="337" y2="444"/>
+          <line x1="341" y1="458" x2="355" y2="444"/>
+          <line x1="359" y1="458" x2="373" y2="444"/>
+          <line x1="377" y1="458" x2="391" y2="444"/>
+          <line x1="395" y1="458" x2="407" y2="446"/>
+        </g>
+        <text x="353" y="441" text-anchor="middle" fill="#b45309" font-size="10" font-weight="800">F3</text>
+      </g>
+
       <!-- dynamische Items -->
       <g id="furnitureLayer"></g>
+      <g id="sunlightLayer" pointer-events="none"></g>
+      <path id="nightOverlay"
+        d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
+        fill="#071426" opacity="0" pointer-events="none"/>
+      <g id="roomLightLayer" pointer-events="none"></g>
     </svg>
   </div>
 
@@ -836,10 +842,11 @@
     </div>
 
     <div class="panel-body">
-      <div class="panel-tabs">
+      <div class="panel-tabs" style="grid-template-columns:repeat(4,1fr)">
         <button class="panel-tab active" data-pane="möbel">🧩 Möbel</button>
         <button class="panel-tab" data-pane="edit">🎛 Edit</button>
         <button class="panel-tab" data-pane="run">🚀 Layout</button>
+        <button class="panel-tab" data-pane="light">☀ Licht</button>
       </div>
 
       <section class="panel-pane active" data-pane-content="möbel">
@@ -874,6 +881,36 @@
         </div>
         <div class="small">Reset löscht nur das aktuell gebaute Layout. Gespeicherte Layouts bleiben erhalten.</div>
         <div class="privacy-note">MAP 01 zeigt keine realen Maßangaben oder persönlichen Raum-Markierungen. Die Geometrie bleibt als Spielkarte konstant.</div>
+      </section>
+
+
+      <section class="panel-pane" data-pane-content="light">
+        <div class="selected-title">☀ 24h Lichtsimulation</div>
+        <div class="hint" style="margin-top:8px">
+          Sonnenlicht ist jetzt mit deinen drei Fenstern verknüpft. Die Berechnung ist bewusst leicht vereinfacht,
+          aber schon an der realen Raumausrichtung orientiert.
+        </div>
+        <div class="kv" style="margin-top:12px">
+          <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
+          <div>Tagesphase</div><div class="value" id="lightPhaseLabel">Tag</div>
+          <div>Sonnenrichtung</div><div class="value" id="lightSunAzLabel">—</div>
+          <div>Aktive Fenster</div><div class="value" id="lightWindowHitLabel">—</div>
+        </div>
+        <input id="lightTimeSlider" type="range" min="0" max="24" step="0.25" value="13" style="width:100%">
+        <div class="row">
+          <button id="lightMorningBtn">🌅 07:00</button>
+          <button id="lightNoonBtn">☀ 13:00</button>
+          <button id="lightEveningBtn">🌇 19:00</button>
+          <button id="lightNightBtn">🌙 23:00</button>
+        </div>
+        <label class="row" style="justify-content:flex-start">
+          <input id="autoRoomLights" type="checkbox" checked>
+          Stehlampen nachts automatisch einschalten
+        </label>
+        <div class="map-rule">
+          <strong>Aktive Fenster:</strong> JA-Fenster, FE-Doppelfenster und die Balkontür auf IJ.
+          Die obere Grundrisskante ist mit deinem Kompass auf ca. 230° / SW kalibriert.
+        </div>
       </section>
 
       <section class="panel-pane" data-pane-content="run">
@@ -1014,20 +1051,20 @@ const db = getFirestore(firebaseApp);
   const defs = {
     chair: {name:'Vierbein-Stuhl', gameClass:'S', role:'Sitzplatz', count:2, w:38, d:38, h:null, kind:'rect', asset:'assets/chair_4leg.png'},
     office: {name:'Bürostuhl', gameClass:'M', role:'Arbeitsplatz', count:1, w:60, d:60, h:100, kind:'circle', asset:'assets/office_chair.png'},
-    desk270: {name:'Tisch groß', gameClass:'XL', role:'Arbeitsfläche', count:1, w:270, d:60, h:80, kind:'rect', asset:'assets/table_large.png'},
-    table90: {name:'Tisch klein', gameClass:'M', role:'Ablage', count:1, w:90, d:55, h:45, kind:'rect', asset:'assets/table_small.png'},
+    desk270: {name:'Tisch groß', gameClass:'XL', role:'Arbeitsfläche', count:1, w:270, d:60, h:80, kind:'rect', asset:'assets/table_large.png', isTable:true},
+    table90: {name:'Tisch klein', gameClass:'M', role:'Ablage', count:1, w:90, d:55, h:45, kind:'rect', asset:'assets/table_small.png', isTable:true},
     floorlamp: {name:'Stehlampe', gameClass:'S', role:'Licht', count:2, w:30, d:30, h:140, kind:'circle', asset:'assets/floor_lamp.png'},
     lsofa: {name:'L-Couch', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape', asset:'assets/l_couch.png', assetBox:{w:217,d:145,dx:0,dy:32.5}},
     sofabed: {name:'Ausklappcouch', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed', asset:'assets/sofabed_closed.png', assetOpen:'assets/sofabed_open.png', assetBox:{w:190,d:120,dx:0,dy:0}, assetBoxOpen:{w:190,d:185,dx:0,dy:32.5}},
     rolltable: {name:'Rolltisch', gameClass:'S', role:'Ablage', count:1, w:40, d:40, h:35, kind:'rect', asset:'assets/roll_table.png'},
-    jibomat: {name:'Jibomat', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect', asset:'assets/jibomat.png'}
+    jibomat: {name:'Jibomat', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect', asset:'assets/jibomat.png', canGoUnderTable:true}
   };
 
   const fixedObstacles = [
     {name:'Locked Zone', polys:[rectPoly(498,0,285,251)]},
     {name:'Bike A', polys:[rectPoly(338,0,30,100)]},
     {name:'Bike B', polys:[rectPoly(281,0,30,100)]},
-    {name:'Fixed Prop', polys:[rectPoly(0,440,49,25)]}
+    {name:'Fixed Prop', polys:[rectPoly(15,440,49,25)]}
   ];
 
 
@@ -1120,51 +1157,6 @@ const db = getFirestore(firebaseApp);
       : `<image href="${asset}" x="${((-w/2)+dx).toFixed(1)}" y="${((-d/2)+dy).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none"/>`;
 
     return `${outline}<g transform="translate(${item.x} ${item.y}) rotate(${item.r})">${imageMarkup}</g>`;
-  }
-
-  function openLayoutPreview(entry){
-    currentLayoutPreview = entry;
-    currentLayoutZoom = 1;
-    document.getElementById('layoutPreviewTitle').textContent = entry?.title || 'Layout';
-    const likes = Number(entry?.score||0);
-    const auto = Number.isFinite(entry?.autoScore) ? ` · ✨ Auto ${entry.autoScore}/100` : '';
-    document.getElementById('layoutPreviewMeta').textContent = `♥ ${likes} Likes${auto}`;
-    renderStaticPreview(document.getElementById('layoutPreviewSvg'), entry?.items || []);
-    applyLayoutPreviewZoom();
-    const modal=document.getElementById('layoutPreviewModal');
-    modal.classList.add('open');
-    modal.setAttribute('aria-hidden','false');
-  }
-
-  function closeLayoutPreview(){
-    document.getElementById('layoutPreviewModal').classList.remove('open');
-    document.getElementById('layoutPreviewModal').setAttribute('aria-hidden','true');
-  }
-
-  function applyLayoutPreviewZoom(){
-    const canvas=document.getElementById('layoutPreviewCanvas');
-    canvas.style.transform=`scale(${currentLayoutZoom})`;
-  }
-
-  function previewZoomBy(mult){
-    currentLayoutZoom=Math.max(0.75,Math.min(3.2,currentLayoutZoom*mult));
-    applyLayoutPreviewZoom();
-  }
-
-  function previewZoomReset(){
-    currentLayoutZoom=1;
-    applyLayoutPreviewZoom();
-    const scroller=document.getElementById('layoutPreviewScroll');
-    scroller.scrollTo({left:0,top:0,behavior:'smooth'});
-  }
-
-  function initLayoutPreviewModal(){
-    document.getElementById('layoutPreviewCloseBtn').onclick=closeLayoutPreview;
-    document.getElementById('layoutZoomInBtn').onclick=()=>previewZoomBy(1.22);
-    document.getElementById('layoutZoomOutBtn').onclick=()=>previewZoomBy(1/1.22);
-    document.getElementById('layoutZoomResetBtn').onclick=previewZoomReset;
-    const modal=document.getElementById('layoutPreviewModal');
-    modal.addEventListener('click',e=>{ if(e.target===modal) closeLayoutPreview(); });
   }
 
   let currentLayoutPreview = null;
@@ -1283,6 +1275,37 @@ const db = getFirestore(firebaseApp);
     return false;
   }
 
+
+  function pointInConvexPolygon(point,poly){
+    let sign=0;
+    for(let i=0;i<poly.length;i++){
+      const a=poly[i], b=poly[(i+1)%poly.length];
+      const cross=(b.x-a.x)*(point.y-a.y)-(b.y-a.y)*(point.x-a.x);
+      if(Math.abs(cross)<0.0001) continue;
+      const s=Math.sign(cross);
+      if(sign===0) sign=s;
+      else if(sign!==s) return false;
+    }
+    return true;
+  }
+
+  function itemFitsFullyInside(inner,outer){
+    const outerPoly=worldPolys(outer)[0];
+    return !!outerPoly && allVertices(worldPolys(inner)).every(p=>pointInConvexPolygon(p,outerPoly));
+  }
+
+  function canNestUnderTable(prop,table){
+    const pDef=defs[prop.type], tDef=defs[table.type];
+    if(!pDef?.canGoUnderTable || !tDef?.isTable) return false;
+    if(!Number.isFinite(pDef.h) || !Number.isFinite(tDef.h)) return false;
+    if(pDef.h + 5 > tDef.h) return false;
+    return itemFitsFullyInside(prop,table);
+  }
+
+  function itemOverlapAllowed(a,b){
+    return canNestUnderTable(a,b) || canNestUnderTable(b,a);
+  }
+
   function statusFor(item){
     const polys=worldPolys(item);
     const verts=allVertices(polys);
@@ -1297,7 +1320,7 @@ const db = getFirestore(firebaseApp);
 
     for(const other of items){
       if(other.id===item.id) continue;
-      if(polysOverlap(polys,worldPolys(other))){
+      if(polysOverlap(polys,worldPolys(other)) && !itemOverlapAllowed(item,other)){
         return {ok:false,text:'Item collision'};
       }
     }
@@ -1495,12 +1518,13 @@ const db = getFirestore(firebaseApp);
     panel.style.display='block';
     const def=defs[item.type];
     const st=statusFor(item);
+    const underTable=!!def.canGoUnderTable && items.some(other=>other.id!==item.id && canNestUnderTable(item,other));
 
     document.getElementById('selName').textContent=def.name;
     document.getElementById('selClass').textContent=`${def.gameClass} · ${def.role}`;
     document.getElementById('selR').textContent=((item.r%360)+360)%360+'°';
     const s=document.getElementById('selStatus');
-    s.textContent=st.ok?'VALID':st.text;
+    s.textContent=st.ok?(underTable?'VALID · unter Tisch':'VALID'):st.text;
     s.className='value '+(st.ok?'status-good':'status-bad');
 
     const mirror=document.getElementById('mirrorBtn');
@@ -1681,6 +1705,179 @@ const db = getFirestore(firebaseApp);
   document.getElementById('quickRotR').onclick=()=>document.getElementById('rotR').click();
   document.getElementById('quickEdit').onclick=()=>setPanelPane('edit',true);
 
+  // ---------- 24h lighting ----------
+  // Compass calibration from user: the top edge of the plan is ~230° / SW.
+  // The sunlight model is intentionally lightweight, but window exposure follows
+  // the measured window positions and this room orientation.
+  const WINDOWS = [
+    // Window 1 on wall J-A, measured from A: 1.47m to 2.17m
+    {id:'w1',name:'F1 · JA', x1:0,   y1:147, x2:0,   y2:217, inward:{x:1,y:0}, outsideAz:50,  blinds:false},
+    // Window 2 on wall F-E, measured from F: 0.04m to 2.00m
+    {id:'w2',name:'F2 · FE', x1:583, y1:0,   x2:779, y2:0,   inward:{x:0,y:1}, outsideAz:140, blinds:false},
+    // Window 3 on wall I-J = existing balcony door, from I2 to I3
+    {id:'w3',name:'F3 · IJ', x1:298, y1:465, x2:408, y2:465, inward:{x:0,y:-1}, outsideAz:320, blinds:true}
+  ];
+  let simulatedHour=13;
+
+  function daylightAmount(hour){
+    if(hour<6 || hour>20) return 0;
+    return Math.max(0,Math.sin(Math.PI*((hour-6)/14)));
+  }
+
+  function sunAzimuth(hour){
+    if(hour<6 || hour>20) return null;
+    const t=(hour-6)/14; // 0..1
+    // Approximation: ENE in the morning -> S at noon -> WNW in the evening.
+    return (60 + 240*t) % 360;
+  }
+
+  function sunElevation(hour){
+    if(hour<6 || hour>20) return 0;
+    return Math.max(0,55*Math.sin(Math.PI*((hour-6)/14)));
+  }
+
+  function phaseName(hour){
+    if(hour<5.5) return 'Nacht';
+    if(hour<8) return 'Morgen';
+    if(hour<17.5) return 'Tag';
+    if(hour<20.5) return 'Abend';
+    return 'Nacht';
+  }
+
+  function formatHour(hour){
+    let h=Math.floor(hour)%24;
+    let m=Math.round((hour-Math.floor(hour))*60);
+    if(m===60){h=(h+1)%24;m=0;}
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  function angleDiff(a,b){
+    return ((a-b+540)%360)-180;
+  }
+
+  function clamp(n,min,max){
+    return Math.max(min,Math.min(max,n));
+  }
+
+  function beamPolygon(windowDef, depth, skew){
+    const p1={x:windowDef.x1, y:windowDef.y1};
+    const p2={x:windowDef.x2, y:windowDef.y2};
+    const dx=p2.x-p1.x, dy=p2.y-p1.y;
+    const len=Math.hypot(dx,dy)||1;
+    const tx=dx/len, ty=dy/len;
+    const ix=windowDef.inward.x, iy=windowDef.inward.y;
+    const p3={x:p2.x + ix*depth + tx*skew, y:p2.y + iy*depth + ty*skew};
+    const p4={x:p1.x + ix*depth + tx*skew, y:p1.y + iy*depth + ty*skew};
+    return [p1,p2,p3,p4];
+  }
+
+  function stripPolygons(windowDef, depth, skew, count=6){
+    const strips=[];
+    const dx=windowDef.x2-windowDef.x1, dy=windowDef.y2-windowDef.y1;
+    for(let i=0;i<count;i++){
+      const t0=i/count, t1=(i+0.58)/count;
+      const seg={
+        x1:windowDef.x1+dx*t0,
+        y1:windowDef.y1+dy*t0,
+        x2:windowDef.x1+dx*t1,
+        y2:windowDef.y1+dy*t1,
+        inward:windowDef.inward
+      };
+      strips.push(beamPolygon(seg, depth, skew));
+    }
+    return strips;
+  }
+
+  function polygonMarkup(points, fill, opacity){
+    const pts=points.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    return `<polygon points="${pts}" fill="${fill}" opacity="${opacity.toFixed(3)}"/>`;
+  }
+
+  function sunlightMarkup(windowDef, sunAz, sunElev, daylight){
+    if(sunAz==null || daylight<=0) return {html:'', active:false};
+    const diff=angleDiff(sunAz, windowDef.outsideAz);
+    const exposure=Math.max(0, Math.cos(diff*Math.PI/180));
+    if(exposure < 0.18) return {html:'', active:false};
+
+    const elevNorm=clamp(sunElev/55, 0, 1);
+    const depth=110 + (1-elevNorm)*140;
+    const skew=Math.sin(diff*Math.PI/180) * depth * 0.55;
+    const alpha=0.10 + exposure*daylight*0.22;
+
+    if(windowDef.blinds){
+      const strips=stripPolygons(windowDef, depth, skew, 6);
+      const html=strips.map(poly=>polygonMarkup(poly, '#fcd34d', alpha*0.85)).join('');
+      return {html, active:true};
+    }else{
+      const poly=beamPolygon(windowDef, depth, skew);
+      return {html:polygonMarkup(poly, '#fde68a', alpha), active:true};
+    }
+  }
+
+  function renderLighting(){
+    const daylight=daylightAmount(simulatedHour);
+    const night=1-daylight;
+    const sunAz=sunAzimuth(simulatedHour);
+    const sunElev=sunElevation(simulatedHour);
+    const overlay=document.getElementById('nightOverlay');
+    const roomLights=document.getElementById('roomLightLayer');
+    const sunlight=document.getElementById('sunlightLayer');
+    const autoLights=document.getElementById('autoRoomLights')?.checked ?? true;
+
+    if(overlay) overlay.setAttribute('opacity',String((night*0.63).toFixed(3)));
+
+    if(roomLights){
+      let out='';
+      if(autoLights && daylight<0.28){
+        for(const item of items.filter(i=>i.type==='floorlamp')){
+          out += `<circle cx="${item.x}" cy="${item.y}" r="120" fill="url(#lampGlow)" opacity="${Math.min(1,.46+night*.48).toFixed(2)}"/>`;
+        }
+      }
+      roomLights.innerHTML=out;
+    }
+
+    let activeWindows=[];
+    if(sunlight){
+      let out='';
+      for(const w of WINDOWS){
+        const result=sunlightMarkup(w, sunAz, sunElev, daylight);
+        if(result.active) activeWindows.push(w.name);
+        out += result.html;
+      }
+      sunlight.innerHTML=out;
+    }
+
+    const time=document.getElementById('lightTimeLabel');
+    const phase=document.getElementById('lightPhaseLabel');
+    const azEl=document.getElementById('lightSunAzLabel');
+    const hitEl=document.getElementById('lightWindowHitLabel');
+
+    if(time) time.textContent=formatHour(simulatedHour);
+    if(phase) phase.textContent=phaseName(simulatedHour);
+    if(azEl) azEl.textContent = sunAz==null ? 'keine Sonne' : `${Math.round(sunAz)}°`;
+    if(hitEl) hitEl.textContent = activeWindows.length ? activeWindows.join(', ') : 'kein direktes Licht';
+  }
+
+  function setSimulatedHour(hour){
+    simulatedHour=((Number(hour)%24)+24)%24;
+    const slider=document.getElementById('lightTimeSlider');
+    if(slider) slider.value=String(simulatedHour);
+    renderLighting();
+  }
+
+  function initLightingControls(){
+    const slider=document.getElementById('lightTimeSlider');
+    if(!slider) return;
+    slider.addEventListener('input',()=>setSimulatedHour(slider.value));
+    document.getElementById('autoRoomLights')?.addEventListener('change',renderLighting);
+    document.getElementById('lightMorningBtn').onclick=()=>setSimulatedHour(7);
+    document.getElementById('lightNoonBtn').onclick=()=>setSimulatedHour(13);
+    document.getElementById('lightEveningBtn').onclick=()=>setSimulatedHour(19);
+    document.getElementById('lightNightBtn').onclick=()=>setSimulatedHour(23);
+    setSimulatedHour(13);
+  }
+
+
 
   // ---------- Save / share / Firebase community layer ----------
   const SAVED_KEY='roomrush-saved-v1';
@@ -1826,7 +2023,7 @@ const db = getFirestore(firebaseApp);
       if(!problem){
         for(let j=0;j<layoutItems.length;j++){
           if(j===idx)continue;
-          if(polysOverlap(polys,allWorld[j])){problem='Item collision';break;}
+          if(polysOverlap(polys,allWorld[j]) && !itemOverlapAllowed(item,layoutItems[j])){problem='Item collision';break;}
         }
       }
 
@@ -2323,8 +2520,11 @@ const db = getFirestore(firebaseApp);
       <rect x="0" y="0" width="100" height="465" fill="rgba(139,92,246,.09)"/>
       <rect x="498" y="0" width="285" height="251" fill="rgba(16,185,129,.11)" stroke="#059669" stroke-width="2" stroke-dasharray="8 6"/>
       <rect x="281" y="0" width="30" height="100" fill="rgba(245,158,11,.22)"/><rect x="338" y="0" width="30" height="100" fill="rgba(245,158,11,.22)"/>
-      <rect x="0" y="440" width="49" height="25" fill="rgba(245,158,11,.22)"/>
-      <rect x="128" y="451" width="123" height="8" fill="rgba(245,158,11,.5)"/>`;
+      <rect x="15" y="440" width="49" height="25" fill="rgba(245,158,11,.22)"/>
+      <rect x="128" y="451" width="123" height="8" fill="rgba(245,158,11,.5)"/>
+      <line x1="0" y1="147" x2="0" y2="217" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/>
+      <line x1="583" y1="0" x2="779" y2="0" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/>
+      <line x1="298" y1="465" x2="408" y2="465" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>`;
     for(const item of layoutItems){
       if(!defs[item.type]) continue;
       out += previewItemMarkup(item);
@@ -2416,6 +2616,24 @@ const db = getFirestore(firebaseApp);
 
 
   // ---------- Mobile-first fullscreen layout viewer ----------
+
+  function syncVisibleViewportHeight(){
+    const h=window.visualViewport?.height || window.innerHeight;
+    document.documentElement.style.setProperty('--visible-vh',`${Math.round(h)}px`);
+  }
+  syncVisibleViewportHeight();
+  window.visualViewport?.addEventListener('resize',()=>{
+    syncVisibleViewportHeight();
+    const viewer=document.getElementById('layoutViewer');
+    if(viewer?.classList.contains('open')) requestAnimationFrame(viewerFit);
+  });
+  window.visualViewport?.addEventListener('scroll',syncVisibleViewportHeight);
+  window.addEventListener('orientationchange',()=>setTimeout(()=>{
+    syncVisibleViewportHeight();
+    const viewer=document.getElementById('layoutViewer');
+    if(viewer?.classList.contains('open')) viewerFit();
+  },100));
+
   let layoutViewerEntry=null;
   let viewerScale=1;
   let viewerX=0;
@@ -2660,7 +2878,7 @@ const db = getFirestore(firebaseApp);
   function renderAll(){
     furnitureLayer.innerHTML='';
     for(const item of items) furnitureLayer.appendChild(createItemGroup(item));
-    renderCatalog();renderSelected();updateHUD();renderSavedLayouts();
+    renderCatalog();renderSelected();updateHUD();renderSavedLayouts();renderLighting();
   }
 
   function save(){
@@ -2743,8 +2961,8 @@ const db = getFirestore(firebaseApp);
   });
 
   document.body.dataset.view='layout';
-  initLayoutPreviewModal();
   initFullscreenLayoutViewer();
+  initLightingControls();
   load();
   fitMap();
   renderAll();
@@ -2755,28 +2973,6 @@ const db = getFirestore(firebaseApp);
 </script>
 
 <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
-
-<div class="preview-modal" id="layoutPreviewModal" aria-hidden="true">
-  <div class="preview-panel">
-    <div class="preview-modal-head">
-      <div>
-        <div class="preview-modal-title" id="layoutPreviewTitle">Layout</div>
-        <div class="preview-modal-sub" id="layoutPreviewMeta">Zoom und Details</div>
-      </div>
-      <div class="preview-modal-actions">
-        <button id="layoutZoomOutBtn">−</button>
-        <button id="layoutZoomInBtn" class="primary">＋</button>
-        <button id="layoutZoomResetBtn">Fit</button>
-        <button id="layoutPreviewCloseBtn">Schließen</button>
-      </div>
-    </div>
-    <div class="preview-canvas-wrap" id="layoutPreviewScroll">
-      <div class="preview-canvas" id="layoutPreviewCanvas">
-        <svg id="layoutPreviewSvg"></svg>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div class="layout-viewer" id="layoutViewer" aria-hidden="true">
   <div class="layout-viewer-head">
