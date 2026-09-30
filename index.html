@@ -707,20 +707,14 @@
         <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".18"/>
         </filter>
-        <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity=".98"/>
-          <stop offset="18%" stop-color="#fffef8" stop-opacity=".88"/>
-          <stop offset="48%" stop-color="#f4f7ff" stop-opacity=".42"/>
-          <stop offset="78%" stop-color="#e7efff" stop-opacity=".16"/>
-          <stop offset="100%" stop-color="#dbeafe" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="lampCore" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-          <stop offset="45%" stop-color="#fffdfa" stop-opacity=".58"/>
-          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-        </radialGradient>
-        <filter id="lampSoft" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="14"/>
+        <clipPath id="roomClip">
+          <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"/>
+        </clipPath>
+        <filter id="lightBlur" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3.5"/>
+        </filter>
+        <filter id="sunBlur" x="-25%" y="-25%" width="150%" height="150%">
+          <feGaussianBlur stdDeviation="7"/>
         </filter>
         <filter id="sunSoft" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="10"/>
@@ -842,11 +836,13 @@
 
       <!-- dynamische Items -->
       <g id="furnitureLayer"></g>
-      <g id="sunlightLayer" pointer-events="none"></g>
-      <path id="nightOverlay"
-        d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
-        fill="#071426" opacity="0" pointer-events="none"/>
-      <g id="roomLightLayer" pointer-events="none"></g>
+      <g id="ambientLightLayer" pointer-events="none" clip-path="url(#roomClip)">
+        <path id="ambientShade"
+          d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
+          fill="#0a1426" opacity="0" style="mix-blend-mode:multiply"/>
+      </g>
+      <g id="sunlightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
+      <g id="roomLightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
     </svg>
   </div>
 
@@ -906,7 +902,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung ist weiterhin eine anschauliche Simulation – keine Bauphysik-Berechnung.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap: Wände begrenzen Lampenlicht und die Helligkeit fällt weich mit der Entfernung ab.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1724,48 +1720,36 @@ const db = getFirestore(firebaseApp);
   document.getElementById('quickEdit').onclick=()=>setPanelPane('edit',true);
 
 
-  // ---------- 24h lighting ----------
-  // Plan calibration supplied by the user:
-  // screen +X / top edge direction ~= 230° (SW).
+
+  // ---------- 24h lighting: low-cost 2D lightmap ----------
+  // No animation loop and no 3D engine: lighting is recalculated only when the
+  // simulated time changes or furniture is dropped/rotated.
   const PLAN_X_AZ = 230;
   const PLAN_Y_AZ = 320;
 
+  const ROOM_POLYGON = [
+    {x:0,y:0},{x:496,y:0},{x:496,y:67},{x:506,y:67},{x:506,y:0},
+    {x:783,y:0},{x:783,y:251},{x:498,y:251},{x:498,y:465},{x:0,y:465}
+  ];
+
   const WINDOWS = [
     {
-      id:'w1',
-      name:'F1 · Dach',
-      type:'roof',
-      cx:50, cy:182,
-      glassW:60,
-      glassSlopeL:110,
-      projectedL:77.39,
-      roofNormalAz:50,
-      roofNormalElev:44.71,
-      blinds:false
+      id:'w1', name:'F1 · Dach', type:'roof',
+      cx:50, cy:182, glassW:60, glassSlopeL:110, projectedL:77.39,
+      roofNormalAz:50, roofNormalElev:44.71, blinds:false
     },
     {
-      id:'w2',
-      name:'F2 · F–G',
-      type:'wall',
-      x1:783, y1:4,
-      x2:783, y2:200,
-      outsideAz:230,
-      sill:100, top:216,
-      blinds:false
+      id:'w2', name:'F2 · F–G', type:'wall',
+      x1:783,y1:4,x2:783,y2:200,outsideAz:230,sill:100,top:216,blinds:false
     },
     {
-      id:'w3',
-      name:'F3 · Balkontür',
-      type:'wall',
-      x1:298, y1:465,
-      x2:408, y2:465,
-      outsideAz:320,
-      sill:5, top:216,
-      blinds:true
+      id:'w3', name:'F3 · Balkontür', type:'wall',
+      x1:298,y1:465,x2:408,y2:465,outsideAz:320,sill:5,top:216,blinds:true
     }
   ];
 
   let simulatedHour=13;
+  let lightGradientSerial=0;
 
   function daylightAmount(hour){
     if(hour<6 || hour>20) return 0;
@@ -1774,8 +1758,7 @@ const db = getFirestore(firebaseApp);
 
   function sunAzimuth(hour){
     if(hour<6 || hour>20) return null;
-    const t=(hour-6)/14;
-    return (60 + 240*t) % 360;
+    return (60 + 240*((hour-6)/14)) % 360;
   }
 
   function sunElevation(hour){
@@ -1799,24 +1782,97 @@ const db = getFirestore(firebaseApp);
   }
 
   function clamp(n,min,max){ return Math.max(min,Math.min(max,n)); }
-
-  function angleDiff(a,b){
-    return ((a-b+540)%360)-180;
-  }
+  function angleDiff(a,b){ return ((a-b+540)%360)-180; }
 
   function mapVectorFromAzimuth(az){
-    // Components against the two orthogonal screen axes.
-    const r1=(az-PLAN_X_AZ)*Math.PI/180;
-    const r2=(az-PLAN_Y_AZ)*Math.PI/180;
-    let x=Math.cos(r1), y=Math.cos(r2);
-    const len=Math.hypot(x,y)||1;
-    return {x:x/len,y:y/len};
+    const rx=(az-PLAN_X_AZ)*Math.PI/180;
+    const ry=(az-PLAN_Y_AZ)*Math.PI/180;
+    let x=Math.cos(rx), y=Math.cos(ry);
+    const l=Math.hypot(x,y)||1;
+    return {x:x/l,y:y/l};
   }
 
-  function polygonMarkup(points, fill, opacity, filter=''){
-    const pts=points.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    const f=filter ? ` filter="${filter}"` : '';
-    return `<polygon points="${pts}" fill="${fill}" opacity="${opacity.toFixed(3)}"${f}/>`;
+  function roomSegments(){
+    const out=[];
+    for(let i=0;i<ROOM_POLYGON.length;i++){
+      out.push([ROOM_POLYGON[i],ROOM_POLYGON[(i+1)%ROOM_POLYGON.length]]);
+    }
+    return out;
+  }
+
+  const LIGHT_WALLS = roomSegments();
+
+  function raySegmentIntersection(origin,angle,a,b){
+    const dx=Math.cos(angle), dy=Math.sin(angle);
+    const sx=b.x-a.x, sy=b.y-a.y;
+    const den=dx*sy-dy*sx;
+    if(Math.abs(den)<1e-8) return null;
+    const ax=a.x-origin.x, ay=a.y-origin.y;
+    const t=(ax*sy-ay*sx)/den;
+    const u=(ax*dy-ay*dx)/den;
+    if(t<0 || u<0 || u>1) return null;
+    return {x:origin.x+dx*t,y:origin.y+dy*t,t};
+  }
+
+  function visibilityPolygon(origin){
+    const eps=0.00008;
+    const rays=[];
+    for(const [a,b] of LIGHT_WALLS){
+      for(const p of [a,b]){
+        const ang=Math.atan2(p.y-origin.y,p.x-origin.x);
+        rays.push(ang-eps,ang,ang+eps);
+      }
+    }
+
+    const hits=[];
+    for(const ang of rays){
+      let best=null;
+      for(const [a,b] of LIGHT_WALLS){
+        const hit=raySegmentIntersection(origin,ang,a,b);
+        if(hit && (!best || hit.t<best.t)) best=hit;
+      }
+      if(best) hits.push({...best,ang});
+    }
+
+    hits.sort((a,b)=>a.ang-b.ang);
+    // Remove near-duplicates to keep the generated SVG tiny.
+    const clean=[];
+    for(const p of hits){
+      const last=clean[clean.length-1];
+      if(!last || Math.hypot(p.x-last.x,p.y-last.y)>.35) clean.push(p);
+    }
+    return clean;
+  }
+
+  function pointsAttr(points){
+    return points.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  }
+
+  function lampLightMarkup(item,intensity){
+    const poly=visibilityPolygon({x:item.x,y:item.y});
+    if(poly.length<3) return '';
+
+    const id=`lampGrad${++lightGradientSerial}`;
+    const range=340;
+    const brightness=clamp(intensity,.15,1);
+
+    // Neutral-white with a very subtle cool edge. The radial gradient is
+    // clipped by the room visibility polygon, so walls actually stop light.
+    return `
+      <defs>
+        <radialGradient id="${id}" gradientUnits="userSpaceOnUse"
+          cx="${item.x}" cy="${item.y}" r="${range}">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.94*brightness).toFixed(3)}"/>
+          <stop offset="16%" stop-color="#fffefa" stop-opacity="${(0.84*brightness).toFixed(3)}"/>
+          <stop offset="38%" stop-color="#f8fbff" stop-opacity="${(0.58*brightness).toFixed(3)}"/>
+          <stop offset="66%" stop-color="#edf4ff" stop-opacity="${(0.28*brightness).toFixed(3)}"/>
+          <stop offset="88%" stop-color="#dbeafe" stop-opacity="${(0.09*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#dbeafe" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <polygon points="${pointsAttr(poly)}" fill="url(#${id})" filter="url(#lightBlur)"/>
+      <circle cx="${item.x}" cy="${item.y}" r="58" fill="#ffffff" opacity="${(0.14*brightness).toFixed(3)}" filter="url(#lightBlur)"/>
+    `;
   }
 
   function wallWindowExposure(w,sunAz,sunElev){
@@ -1830,101 +1886,97 @@ const db = getFirestore(firebaseApp);
     const elev=sunElev*Math.PI/180;
     const normalElev=w.roofNormalElev*Math.PI/180;
     const azDiff=angleDiff(sunAz,w.roofNormalAz)*Math.PI/180;
-    // Dot product between sun direction and roof outward/upward normal.
     const dot=
-      Math.cos(elev)*Math.cos(normalElev)*Math.cos(azDiff) +
+      Math.cos(elev)*Math.cos(normalElev)*Math.cos(azDiff)+
       Math.sin(elev)*Math.sin(normalElev);
     return Math.max(0,dot);
   }
 
-  function wallBeam(w,sunAz,sunElev,daylight){
+  function polygonMarkup(points,fill,opacity,filter=''){
+    const f=filter?` filter="${filter}"`:'';
+    return `<polygon points="${pointsAttr(points)}" fill="${fill}" opacity="${opacity.toFixed(3)}"${f}/>`;
+  }
+
+  function wallSunMarkup(w,sunAz,sunElev,daylight){
     const exposure=wallWindowExposure(w,sunAz,sunElev);
-    if(exposure<0.12) return {html:'',active:false};
+    if(exposure<.12) return {html:'',active:false};
 
     const ray=mapVectorFromAzimuth((sunAz+180)%360);
     const elev=Math.max(8,sunElev)*Math.PI/180;
-    // Lower sun => longer penetration.
-    const depth=clamp(110/Math.tan(elev),90,330);
+    const depth=clamp(120/Math.tan(elev),95,340);
     const p1={x:w.x1,y:w.y1}, p2={x:w.x2,y:w.y2};
     const p3={x:p2.x+ray.x*depth,y:p2.y+ray.y*depth};
     const p4={x:p1.x+ray.x*depth,y:p1.y+ray.y*depth};
-    const alpha=clamp(.07 + exposure*daylight*.24,.07,.30);
+    const alpha=clamp(.045+exposure*daylight*.18,.04,.22);
+
+    const broad=polygonMarkup([p1,p2,p3,p4],'#fff6d6',alpha*.65,'url(#sunBlur)');
 
     if(w.blinds){
-      const strips=[];
-      const dx=w.x2-w.x1, dy=w.y2-w.y1;
-      const count=7;
-      for(let i=0;i<count;i++){
-        const a=i/count, b=(i+.48)/count;
+      const dx=w.x2-w.x1,dy=w.y2-w.y1;
+      let strips='';
+      for(let i=0;i<7;i++){
+        const a=i/7,b=(i+.42)/7;
         const s1={x:w.x1+dx*a,y:w.y1+dy*a};
         const s2={x:w.x1+dx*b,y:w.y1+dy*b};
-        strips.push([s1,s2,
+        strips += polygonMarkup([
+          s1,s2,
           {x:s2.x+ray.x*depth,y:s2.y+ray.y*depth},
           {x:s1.x+ray.x*depth,y:s1.y+ray.y*depth}
-        ]);
+        ],'#fff8df',alpha*.72);
       }
-      const soft=polygonMarkup([p1,p2,p3,p4],'#fff8dc',alpha*.25,'url(#sunSoft)');
-      const stripes=strips.map(poly=>polygonMarkup(poly,'#fff5c2',alpha*.80)).join('');
-      return {html:soft+stripes,active:true};
+      return {html:broad+strips,active:true};
     }
 
-    const soft=polygonMarkup([p1,p2,p3,p4],'#fff8dc',alpha*.55,'url(#sunSoft)');
-    const inner=polygonMarkup([p1,p2,p3,p4],'#fff4c4',alpha*.36);
-    return {html:soft+inner,active:true};
+    return {html:broad+polygonMarkup([p1,p2,p3,p4],'#fffaf0',alpha*.32),active:true};
   }
 
-  function roofBeam(w,sunAz,sunElev,daylight){
+  function roofSunMarkup(w,sunAz,sunElev,daylight){
     const exposure=roofWindowExposure(w,sunAz,sunElev);
-    if(exposure<0.10) return {html:'',active:false};
-
+    if(exposure<.10) return {html:'',active:false};
     const ray=mapVectorFromAzimuth((sunAz+180)%360);
     const elev=Math.max(10,sunElev)*Math.PI/180;
-    const travel=clamp(90/Math.tan(elev),55,210);
-
-    // Soft oval-ish floor patch approximated by two overlapping ellipses.
-    const cx=w.cx + ray.x*travel*.55;
-    const cy=w.cy + ray.y*travel*.55;
-    const rx=70 + (1-exposure)*35;
-    const ry=48 + (1-exposure)*28;
-    const alpha=clamp(.06 + exposure*daylight*.24,.06,.28);
-
-    const html=
-      `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${(rx*1.35).toFixed(1)}" ry="${(ry*1.35).toFixed(1)}" fill="#fff8dc" opacity="${(alpha*.45).toFixed(3)}" filter="url(#sunSoft)"/>`+
-      `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="#fff4c4" opacity="${(alpha*.52).toFixed(3)}"/>`;
-
-    return {html,active:true};
+    const travel=clamp(95/Math.tan(elev),50,215);
+    const cx=w.cx+ray.x*travel*.55;
+    const cy=w.cy+ray.y*travel*.55;
+    const alpha=clamp(.04+exposure*daylight*.18,.04,.21);
+    return {
+      html:
+        `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="105" ry="76" fill="#fff9e8" opacity="${(alpha*.52).toFixed(3)}" filter="url(#sunBlur)"/>`+
+        `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="72" ry="50" fill="#ffffff" opacity="${(alpha*.22).toFixed(3)}"/>`,
+      active:true
+    };
   }
 
   function sunlightMarkup(w,sunAz,sunElev,daylight){
     return w.type==='roof'
-      ? roofBeam(w,sunAz,sunElev,daylight)
-      : wallBeam(w,sunAz,sunElev,daylight);
+      ? roofSunMarkup(w,sunAz,sunElev,daylight)
+      : wallSunMarkup(w,sunAz,sunElev,daylight);
   }
 
   function renderLighting(){
     const daylight=daylightAmount(simulatedHour);
-    const night=1-daylight;
+    const darkness=1-daylight;
     const sunAz=sunAzimuth(simulatedHour);
     const sunElev=sunElevation(simulatedHour);
-
-    const overlay=document.getElementById('nightOverlay');
+    const ambient=document.getElementById('ambientShade');
     const roomLights=document.getElementById('roomLightLayer');
     const sunlight=document.getElementById('sunlightLayer');
     const autoLights=document.getElementById('autoRoomLights')?.checked ?? true;
 
-    // Keep the room dark enough to read as night but not crushed to black.
-    if(overlay) overlay.setAttribute('opacity',String((night*.50).toFixed(3)));
+    // Ambient darkness, not a black texture: blue-toned multiply shading.
+    if(ambient){
+      const opacity=clamp(darkness*.44,0,.44);
+      ambient.setAttribute('opacity',opacity.toFixed(3));
+      ambient.setAttribute('fill',darkness>.75?'#0a1426':'#17233a');
+    }
 
     if(roomLights){
+      lightGradientSerial=0;
       let out='';
-      if(autoLights && daylight<.34){
-        const darkness=clamp((.34-daylight)/.34,0,1);
+      if(autoLights && daylight<.38){
+        const intensity=clamp((.42-daylight)/.42,.20,1);
         for(const item of items.filter(i=>i.type==='floorlamp')){
-          // Large neutral-white, very soft ambient field.
-          out += `<circle cx="${item.x}" cy="${item.y}" r="255" fill="url(#lampGlow)" opacity="${(.48+.32*darkness).toFixed(2)}" filter="url(#lampSoft)"/>`;
-          // Brighter inner pool so the lamp reads as a light source without looking yellow.
-          out += `<circle cx="${item.x}" cy="${item.y}" r="150" fill="url(#lampGlow)" opacity="${(.46+.24*darkness).toFixed(2)}"/>`;
-          out += `<circle cx="${item.x}" cy="${item.y}" r="48" fill="url(#lampCore)" opacity=".78"/>`;
+          out += lampLightMarkup(item,intensity);
         }
       }
       roomLights.innerHTML=out;
@@ -1970,6 +2022,7 @@ const db = getFirestore(firebaseApp);
     document.getElementById('lightNightBtn').onclick=()=>setSimulatedHour(23);
     setSimulatedHour(13);
   }
+
 
 
 
