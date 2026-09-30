@@ -937,7 +937,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung behandelt die Stehlampe explizit als einzelnes Lichtobjekt und nutzt eine korrigierte Sonnenausrichtung. Grundlage: Wenn das iPhone mit normaler Bildschirmorientierung gegen die Wand A–B zeigt, misst der Kompass 275° W. Daraus folgt für den Plan: oben ≈ 275°, rechts ≈ 5°, unten ≈ 95°, links ≈ 185°.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt eine korrigierte Sonnenausrichtung und betont Tageslicht stärker: kräftigere Fenster-Beams, dunklere Tagschatten, zeitabhängige Sonnenfarben und ein dachschrägenbasiertes F1-Lichtfeld statt einer runden Lichtinsel.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1829,6 +1829,14 @@ const db = getFirestore(firebaseApp);
     return Math.max(0,55*Math.sin(Math.PI*((hour-6)/14)));
   }
 
+  function sunPalette(hour){
+    if(hour<7.5) return {broad:'#ffd1a1', fill:'#ffe8c8', hot:'#fff8eb', accent:'#ffb56f'};
+    if(hour<11) return {broad:'#ffe2b8', fill:'#fff0d5', hot:'#fff9ee', accent:'#ffd08a'};
+    if(hour<16.5) return {broad:'#fff0cc', fill:'#fff6df', hot:'#fffdf4', accent:'#ffe198'};
+    if(hour<18.5) return {broad:'#ffd09b', fill:'#ffe0ba', hot:'#fff2df', accent:'#ffb06a'};
+    return {broad:'#ffb076', fill:'#ffd0ae', hot:'#fff0df', accent:'#ff8f58'};
+  }
+
   function phaseName(hour){
     if(hour<5.5) return 'Nacht';
     if(hour<8) return 'Morgen';
@@ -2000,11 +2008,11 @@ const db = getFirestore(firebaseApp);
     if(exposure<.12) return {active:false};
     const ray=mapVectorFromAzimuth((sunAz+180)%360);
     const elev=Math.max(8,sunElev)*Math.PI/180;
-    const depth=clamp(120/Math.tan(elev),95,340);
+    const depth=clamp(138/Math.tan(elev),110,390);
     const p1={x:w.x1,y:w.y1}, p2={x:w.x2,y:w.y2};
     const p3={x:p2.x+ray.x*depth,y:p2.y+ray.y*depth};
     const p4={x:p1.x+ray.x*depth,y:p1.y+ray.y*depth};
-    const alpha=clamp(.08+exposure*daylight*.24,.08,.30);
+    const alpha=clamp(.11+exposure*daylight*.30,.11,.36);
     return {active:true, exposure, alpha, poly:[p1,p2,p3,p4], ray, depth};
   }
 
@@ -2012,26 +2020,46 @@ const db = getFirestore(firebaseApp);
     const exposure=roofWindowExposure(w,sunAz,sunElev);
     if(exposure<.10) return {active:false};
     const ray=mapVectorFromAzimuth((sunAz+180)%360);
+    const perp={x:-ray.y,y:ray.x};
     const elev=Math.max(10,sunElev)*Math.PI/180;
-    const travel=clamp(95/Math.tan(elev),50,215);
-    const cx=w.cx+ray.x*travel*.55;
-    const cy=w.cy+ray.y*travel*.55;
-    const alpha=clamp(.08+exposure*daylight*.22,.08,.28);
-    return {active:true, exposure, alpha, cx, cy, rx:86, ry:60, ray};
+    const travel=clamp(108/Math.tan(elev),64,240);
+    const cx=w.cx+ray.x*travel*.62;
+    const cy=w.cy+ray.y*travel*.62;
+    const alpha=clamp(.12+exposure*daylight*.30,.12,.36);
+
+    const bodyLen=clamp(w.projectedL*1.18 + travel*.34, 96, 178);
+    const halfW=Math.max(24, w.glassW*.56);
+    const front=bodyLen*.60;
+    const back=bodyLen*.40;
+
+    const p1={x:cx-ray.x*back-perp.x*halfW, y:cy-ray.y*back-perp.y*halfW};
+    const p2={x:cx-ray.x*back+perp.x*halfW, y:cy-ray.y*back+perp.y*halfW};
+    const p3={x:cx+ray.x*front+perp.x*(halfW*.82), y:cy+ray.y*front+perp.y*(halfW*.82)};
+    const p4={x:cx+ray.x*front-perp.x*(halfW*.82), y:cy+ray.y*front-perp.y*(halfW*.82)};
+
+    const innerHalfW=halfW*.62;
+    const innerFront=front*.74;
+    const innerBack=back*.42;
+    const q1={x:cx-ray.x*innerBack-perp.x*innerHalfW, y:cy-ray.y*innerBack-perp.y*innerHalfW};
+    const q2={x:cx-ray.x*innerBack+perp.x*innerHalfW, y:cy-ray.y*innerBack+perp.y*innerHalfW};
+    const q3={x:cx+ray.x*innerFront+perp.x*(innerHalfW*.82), y:cy+ray.y*innerFront+perp.y*(innerHalfW*.82)};
+    const q4={x:cx+ray.x*innerFront-perp.x*(innerHalfW*.82), y:cy+ray.y*innerFront-perp.y*(innerHalfW*.82)};
+
+    return {active:true, exposure, alpha, cx, cy, ray, perp, poly:[p1,p2,p3,p4], innerPoly:[q1,q2,q3,q4]};
   }
 
   function wallSunMarkup(geom,w){
     if(!geom.active) return {html:'',active:false};
+    const pal=sunPalette(simulatedHour);
 
-    const broad=polygonMarkup(geom.poly,'#fff6d6',geom.alpha*.44,'url(#sunBlur)');
-    const fill=polygonMarkup(geom.poly,'#fff8e8',geom.alpha*.24);
+    const broad=polygonMarkup(geom.poly,pal.broad,geom.alpha*.54,'url(#sunBlur)');
+    const fill=polygonMarkup(geom.poly,pal.fill,geom.alpha*.30);
 
-    // brighter near-window band so sunlight reads more clearly at the source
     const p1=geom.poly[0], p2=geom.poly[1], p3=geom.poly[2], p4=geom.poly[3];
     const t=0.26;
     const q1={x:p1.x+(p4.x-p1.x)*t, y:p1.y+(p4.y-p1.y)*t};
     const q2={x:p2.x+(p3.x-p2.x)*t, y:p2.y+(p3.y-p2.y)*t};
-    const windowBand=polygonMarkup([p1,p2,q2,q1],'#fffef8',geom.alpha*.58,'url(#lightBlur)');
+    const windowBand=polygonMarkup([p1,p2,q2,q1],pal.hot,geom.alpha*.70,'url(#lightBlur)');
 
     if(w.blinds){
       const dx=w.x2-w.x1,dy=w.y2-w.y1;
@@ -2044,7 +2072,7 @@ const db = getFirestore(firebaseApp);
           s1,s2,
           {x:s2.x+geom.ray.x*geom.depth,y:s2.y+geom.ray.y*geom.depth},
           {x:s1.x+geom.ray.x*geom.depth,y:s1.y+geom.ray.y*geom.depth}
-        ],'#fff9e8',geom.alpha*.85,'url(#lightBlur)');
+        ],pal.accent,geom.alpha*.96,'url(#lightBlur)');
       }
       return {html:broad+fill+windowBand+strips,active:true};
     }
@@ -2054,18 +2082,20 @@ const db = getFirestore(firebaseApp);
       {x:p1.x+(p2.x-p1.x)*.80, y:p1.y+(p2.y-p1.y)*.80},
       {x:p4.x+(p3.x-p4.x)*.80, y:p4.y+(p3.y-p4.y)*.80},
       {x:p4.x+(p3.x-p4.x)*.20, y:p4.y+(p3.y-p4.y)*.20}
-    ],'#fffef5',geom.alpha*.20,'url(#sunBlur)');
+    ],pal.hot,geom.alpha*.26,'url(#sunBlur)');
 
     return {html:broad+fill+windowBand+centerLine,active:true};
   }
 
   function roofSunMarkup(geom){
     if(!geom.active) return {html:'',active:false};
+    const pal=sunPalette(simulatedHour);
     return {
       html:
-        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="130" ry="92" fill="#fff7e2" opacity="${(geom.alpha*.34).toFixed(3)}" filter="url(#sunBlur)"/>`+
-        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="${(geom.rx*1.18).toFixed(1)}" ry="${(geom.ry*1.12).toFixed(1)}" fill="#fffbf2" opacity="${(geom.alpha*.46).toFixed(3)}" filter="url(#lightBlur)"/>`+
-        `<ellipse cx="${geom.cx.toFixed(1)}" cy="${geom.cy.toFixed(1)}" rx="${(geom.rx*.62).toFixed(1)}" ry="${(geom.ry*.58).toFixed(1)}" fill="#ffffff" opacity="${(geom.alpha*.18).toFixed(3)}"/>`,
+        polygonMarkup(geom.poly,pal.broad,geom.alpha*.46,'url(#sunBlur)')+
+        polygonMarkup(geom.poly,pal.fill,geom.alpha*.32,'url(#lightBlur)')+
+        polygonMarkup(geom.innerPoly,pal.hot,geom.alpha*.38,'url(#lightBlur)')+
+        polygonMarkup(geom.innerPoly,'#ffffff',geom.alpha*.10),
       active:true
     };
   }
@@ -2128,9 +2158,9 @@ const db = getFirestore(firebaseApp);
       if(!sg.active) continue;
       let hit=0;
       if(sg.window.type==='roof'){
-        if(pointInEllipse(pt, sg.cx, sg.cy, 130, 92)) hit=sg.exposure*.56;
+        if(pointInPolygon(pt, sg.poly)) hit=sg.exposure*.68;
       }else{
-        if(pointInPolygon(pt, sg.poly)) hit=sg.exposure*.62;
+        if(pointInPolygon(pt, sg.poly)) hit=sg.exposure*.72;
       }
       brightness += hit;
       if(hit>strongest){
@@ -2140,10 +2170,10 @@ const db = getFirestore(firebaseApp);
       }
     }
 
-    const b=clamp(brightness, .54, 1.26);
-    const shadowAlpha=clamp(.18 + strongest*.18 + (1-daylight)*.10, .18, .36);
-    const shadowBlur=clamp(3.0 + strongest*3.8, 3.0, 6.8);
-    const shadowOffset=clamp(2.4 + strongest*9.0, 2.4, 9.8);
+    const b=clamp(brightness, .52, 1.34);
+    const shadowAlpha=clamp(.20 + strongest*.26 + daylight*.06, .20, .44);
+    const shadowBlur=clamp(5.0 - strongest*2.0 + (1-daylight)*.8, 2.6, 5.8);
+    const shadowOffset=clamp(2.8 + strongest*10.8, 2.8, 12.0);
     return {brightness:b, shadowAlpha, shadowBlur, shadowOffset, dominant};
   }
 
@@ -2157,7 +2187,7 @@ const db = getFirestore(firebaseApp);
       const localBrightness = Math.max(.80, model.brightness);
       g.style.filter=
         `brightness(${localBrightness.toFixed(3)}) `+
-        `contrast(1.03) `+
+        `contrast(1.05) `+
         `saturate(${(0.99 + (localBrightness-0.82)*0.22).toFixed(3)}) `+
         `drop-shadow(${dx}px ${dy}px ${model.shadowBlur.toFixed(2)}px rgba(15,23,42,${model.shadowAlpha.toFixed(3)}))`;
       g.style.opacity='1';
