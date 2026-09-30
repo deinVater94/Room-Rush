@@ -725,6 +725,9 @@
           <stop offset="72%" stop-color="#e5ebf1"/>
           <stop offset="100%" stop-color="#dae2ea"/>
         </linearGradient>
+        <pattern id="floorTexture" patternUnits="userSpaceOnUse" width="118" height="118">
+          <image href="assets/floor_texture.jpg" x="0" y="0" width="118" height="118" preserveAspectRatio="xMidYMid slice" opacity=".88"/>
+        </pattern>
         <radialGradient id="floorCenterGlow" cx="42%" cy="42%" r="72%">
           <stop offset="0%" stop-color="#ffffff" stop-opacity=".74"/>
           <stop offset="55%" stop-color="#f8fbff" stop-opacity=".26"/>
@@ -746,12 +749,14 @@
 
       <path id="roomFill"
         d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z"
-        fill="url(#floorBase)" stroke="none"/>
+        fill="url(#floorTexture)" stroke="none"/>
 
       <g id="roomStyleLayer" pointer-events="none">
-        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="url(#floorCenterGlow)" opacity=".88"/>
-        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="url(#floorVignette)" opacity=".72" style="mix-blend-mode:multiply"/>
-        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="none" stroke="rgba(15,23,42,.12)" stroke-width="18" filter="url(#lightBlur)"/>
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="url(#floorBase)" opacity=".22" style="mix-blend-mode:screen"/>
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="url(#floorCenterGlow)" opacity=".42"/>
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="url(#floorVignette)" opacity=".48" style="mix-blend-mode:multiply"/>
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="rgba(255,255,255,.10)" style="mix-blend-mode:soft-light"/>
+        <path d="M0 0 L496 0 L496 67 L506 67 L506 0 L783 0 L783 251 L498 251 L498 465 L0 465 Z" fill="none" stroke="rgba(15,23,42,.10)" stroke-width="16" filter="url(#lightBlur)"/>
       </g>
 
       <!-- NIEDRIGE ZONE: fixed gameplay height restriction -->
@@ -932,7 +937,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap im illustrativen Stil: weiches Raum-Ambient, sanfte Vignette, gerichtete Möbel-Schatten und eine beleuchtete Bodenwirkung ähnlich einem Game-Render.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap im illustrativen Stil: texturierter Boden, sanfte Raum-Vignette, gerichtete Möbel-Schatten und eine realistischere Stehlampen-Lichtfläche mit Boden-Pool plus Raum-Streulicht.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1919,29 +1924,40 @@ const db = getFirestore(firebaseApp);
     const poly=visibilityPolygon({x:item.x,y:item.y});
     if(poly.length<3) return '';
     const id=`lampGrad${++lightGradientSerial}`;
-    const range=300;
+    const range=315;
     const brightness=clamp(intensity,.15,1);
+
+    const poolCx=(item.x + 16).toFixed(1);
+    const poolCy=(item.y + 14).toFixed(1);
+    const poolRotate=22;
 
     return `
       <defs>
-        <radialGradient id="${id}" gradientUnits="userSpaceOnUse"
+        <radialGradient id="${id}Room" gradientUnits="userSpaceOnUse"
           cx="${item.x}" cy="${item.y}" r="${range}">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.90*brightness).toFixed(3)}"/>
-          <stop offset="18%" stop-color="#fffefa" stop-opacity="${(0.82*brightness).toFixed(3)}"/>
-          <stop offset="40%" stop-color="#f4f8ff" stop-opacity="${(0.46*brightness).toFixed(3)}"/>
-          <stop offset="74%" stop-color="#dce7f7" stop-opacity="${(0.14*brightness).toFixed(3)}"/>
-          <stop offset="100%" stop-color="#dce7f7" stop-opacity="0"/>
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.30*brightness).toFixed(3)}"/>
+          <stop offset="25%" stop-color="#f7fbff" stop-opacity="${(0.22*brightness).toFixed(3)}"/>
+          <stop offset="62%" stop-color="#deebf8" stop-opacity="${(0.10*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#deebf8" stop-opacity="0"/>
         </radialGradient>
-        <radialGradient id="${id}Warm" gradientUnits="userSpaceOnUse"
-          cx="${item.x}" cy="${item.y}" r="130">
-          <stop offset="0%" stop-color="#fffdf7" stop-opacity="${(0.30*brightness).toFixed(3)}"/>
-          <stop offset="38%" stop-color="#ffe8b8" stop-opacity="${(0.18*brightness).toFixed(3)}"/>
-          <stop offset="100%" stop-color="#ffe8b8" stop-opacity="0"/>
+        <radialGradient id="${id}Pool" gradientUnits="userSpaceOnUse"
+          cx="${poolCx}" cy="${poolCy}" r="118">
+          <stop offset="0%" stop-color="#fffef8" stop-opacity="${(0.58*brightness).toFixed(3)}"/>
+          <stop offset="22%" stop-color="#fff7dc" stop-opacity="${(0.42*brightness).toFixed(3)}"/>
+          <stop offset="58%" stop-color="#ffe8ba" stop-opacity="${(0.17*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#ffe8ba" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="${id}Hot" gradientUnits="userSpaceOnUse"
+          cx="${poolCx}" cy="${poolCy}" r="54">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.30*brightness).toFixed(3)}"/>
+          <stop offset="42%" stop-color="#fff9e8" stop-opacity="${(0.14*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#fff9e8" stop-opacity="0"/>
         </radialGradient>
       </defs>
-      <polygon points="${pointsAttr(poly)}" fill="url(#${id})" filter="url(#lightBlur)"/>
-      <circle cx="${item.x}" cy="${item.y}" r="118" fill="url(#${id}Warm)" filter="url(#lightBlur)"/>
-      <circle cx="${item.x}" cy="${item.y}" r="30" fill="#ffffff" opacity="${(0.13*brightness).toFixed(3)}" filter="url(#lightBlur)"/>
+      <polygon points="${pointsAttr(poly)}" fill="url(#${id}Room)" filter="url(#lightBlur)"/>
+      <ellipse cx="${poolCx}" cy="${poolCy}" rx="102" ry="78" transform="rotate(${poolRotate} ${poolCx} ${poolCy})" fill="url(#${id}Pool)" filter="url(#lightBlur)"/>
+      <ellipse cx="${poolCx}" cy="${poolCy}" rx="52" ry="38" transform="rotate(${poolRotate} ${poolCx} ${poolCy})" fill="url(#${id}Hot)" filter="url(#lightBlur)"/>
+      <circle cx="${item.x}" cy="${item.y}" r="11" fill="#ffffff" opacity="${(0.08*brightness).toFixed(3)}"/>
     `;
   }
 
