@@ -937,7 +937,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt eine korrigierte Sonnenausrichtung und betont Tageslicht stärker: kräftigere Fenster-Beams, dunklere Tagschatten, zeitabhängige Sonnenfarben und ein dachschrägenbasiertes F1-Lichtfeld statt einer runden Lichtinsel.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt einen weicheren und sinnvolleren Sonnenverlauf pro Fenster: Tageslicht blendet sanfter ein und aus, Abendfarben sind dramatischer und Jalousie-Strahlen der Balkontür werden explizit berechnet.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1815,8 +1815,9 @@ const db = getFirestore(firebaseApp);
   let lightGradientSerial=0;
 
   function daylightAmount(hour){
-    if(hour<6 || hour>20) return 0;
-    return Math.max(0,Math.sin(Math.PI*((hour-6)/14)));
+    if(hour<5.5 || hour>20.5) return 0;
+    const t=clamp((hour-5.5)/15,0,1);
+    return Math.pow(Math.sin(Math.PI*t), 0.92);
   }
 
   function sunAzimuth(hour){
@@ -1830,11 +1831,11 @@ const db = getFirestore(firebaseApp);
   }
 
   function sunPalette(hour){
-    if(hour<7.5) return {broad:'#ffd1a1', fill:'#ffe8c8', hot:'#fff8eb', accent:'#ffb56f'};
+    if(hour<7.5) return {broad:'#ffc58e', fill:'#ffe2b9', hot:'#fff6e5', accent:'#ffad68'};
     if(hour<11) return {broad:'#ffe2b8', fill:'#fff0d5', hot:'#fff9ee', accent:'#ffd08a'};
     if(hour<16.5) return {broad:'#fff0cc', fill:'#fff6df', hot:'#fffdf4', accent:'#ffe198'};
-    if(hour<18.5) return {broad:'#ffd09b', fill:'#ffe0ba', hot:'#fff2df', accent:'#ffb06a'};
-    return {broad:'#ffb076', fill:'#ffd0ae', hot:'#fff0df', accent:'#ff8f58'};
+    if(hour<18.2) return {broad:'#ffc27f', fill:'#ffd8ac', hot:'#fff0da', accent:'#ff9f58'};
+    return {broad:'#ff935d', fill:'#ffbe97', hot:'#ffe9d2', accent:'#ff7440'};
   }
 
   function phaseName(hour){
@@ -1853,7 +1854,16 @@ const db = getFirestore(firebaseApp);
   }
 
   function clamp(n,min,max){ return Math.max(min,Math.min(max,n)); }
+  function smoothstep(edge0, edge1, x){
+    const t=clamp((x-edge0)/((edge1-edge0)||1e-9),0,1);
+    return t*t*(3-2*t);
+  }
   function angleDiff(a,b){ return ((a-b+540)%360)-180; }
+  function goldenHourFactor(hour){
+    const morning = 1 - smoothstep(6.2, 9.0, hour);
+    const evening = smoothstep(16.2, 19.5, hour);
+    return clamp(Math.max(morning, evening), 0, 1);
+  }
 
   function mapVectorFromAzimuth(az){
     const rx=(az-PLAN_X_AZ)*Math.PI/180;
@@ -1990,47 +2000,51 @@ const db = getFirestore(firebaseApp);
 
   function wallWindowExposure(w,sunAz,sunElev){
     if(sunAz==null || sunElev<=0) return 0;
-    const diff=angleDiff(sunAz,w.outsideAz)*Math.PI/180;
-    return Math.max(0,Math.cos(sunElev*Math.PI/180)*Math.cos(diff));
+    const diff=Math.abs(angleDiff(sunAz,w.outsideAz));
+    const angleFactor = 1 - smoothstep(38, 102, diff);
+    const elevFactor = smoothstep(2, 11, sunElev) * (1 - smoothstep(58, 82, sunElev) * 0.18);
+    return clamp(angleFactor * elevFactor, 0, 1);
   }
 
   function roofWindowExposure(w,sunAz,sunElev){
     if(sunAz==null || sunElev<=0) return 0;
-    const elev=sunElev*Math.PI/180;
-    const normalElev=w.roofNormalElev*Math.PI/180;
-    const azDiff=angleDiff(sunAz,w.roofNormalAz)*Math.PI/180;
-    const dot=Math.cos(elev)*Math.cos(normalElev)*Math.cos(azDiff)+Math.sin(elev)*Math.sin(normalElev);
-    return Math.max(0,dot);
+    const azDiff=Math.abs(angleDiff(sunAz,w.roofNormalAz));
+    const azFactor = 1 - smoothstep(28, 106, azDiff);
+    const elevFactor = smoothstep(10, 23, sunElev);
+    const dotFactor = Math.max(0, Math.cos(azDiff*Math.PI/180)*0.55 + Math.sin((sunElev-w.roofNormalElev+50)*Math.PI/180)*0.45);
+    return clamp(azFactor * elevFactor * clamp(dotFactor,0,1.1), 0, 1);
   }
 
   function getWallSunGeom(w,sunAz,sunElev,daylight){
     const exposure=wallWindowExposure(w,sunAz,sunElev);
-    if(exposure<.12) return {active:false};
+    if(exposure<.015) return {active:false};
     const ray=mapVectorFromAzimuth((sunAz+180)%360);
-    const elev=Math.max(8,sunElev)*Math.PI/180;
-    const depth=clamp(138/Math.tan(elev),110,390);
+    const elev=Math.max(6,sunElev)*Math.PI/180;
+    const golden=goldenHourFactor(simulatedHour);
+    const depth=clamp((132 + golden*44)/Math.tan(elev),105,430);
     const p1={x:w.x1,y:w.y1}, p2={x:w.x2,y:w.y2};
     const p3={x:p2.x+ray.x*depth,y:p2.y+ray.y*depth};
     const p4={x:p1.x+ray.x*depth,y:p1.y+ray.y*depth};
-    const alpha=clamp(.11+exposure*daylight*.30,.11,.36);
-    return {active:true, exposure, alpha, poly:[p1,p2,p3,p4], ray, depth};
+    const alpha=clamp(.035 + exposure*(.22 + golden*.16), .035, .42);
+    return {active:true, exposure, alpha, poly:[p1,p2,p3,p4], ray, depth, golden};
   }
 
   function getRoofSunGeom(w,sunAz,sunElev,daylight){
     const exposure=roofWindowExposure(w,sunAz,sunElev);
-    if(exposure<.10) return {active:false};
+    if(exposure<.02) return {active:false};
     const ray=mapVectorFromAzimuth((sunAz+180)%360);
     const perp={x:-ray.y,y:ray.x};
-    const elev=Math.max(10,sunElev)*Math.PI/180;
-    const travel=clamp(108/Math.tan(elev),64,240);
-    const cx=w.cx+ray.x*travel*.62;
-    const cy=w.cy+ray.y*travel*.62;
-    const alpha=clamp(.12+exposure*daylight*.30,.12,.36);
+    const elev=Math.max(9,sunElev)*Math.PI/180;
+    const golden=goldenHourFactor(simulatedHour);
+    const travel=clamp((112 + golden*22)/Math.tan(elev),60,252);
+    const cx=w.cx+ray.x*travel*.64;
+    const cy=w.cy+ray.y*travel*.64;
+    const alpha=clamp(.045 + exposure*(.24 + golden*.14), .045, .40);
 
-    const bodyLen=clamp(w.projectedL*1.18 + travel*.34, 96, 178);
+    const bodyLen=clamp(w.projectedL*1.10 + travel*.42, 98, 196);
     const halfW=Math.max(24, w.glassW*.56);
-    const front=bodyLen*.60;
-    const back=bodyLen*.40;
+    const front=bodyLen*.62;
+    const back=bodyLen*.38;
 
     const p1={x:cx-ray.x*back-perp.x*halfW, y:cy-ray.y*back-perp.y*halfW};
     const p2={x:cx-ray.x*back+perp.x*halfW, y:cy-ray.y*back+perp.y*halfW};
@@ -2038,43 +2052,53 @@ const db = getFirestore(firebaseApp);
     const p4={x:cx+ray.x*front-perp.x*(halfW*.82), y:cy+ray.y*front-perp.y*(halfW*.82)};
 
     const innerHalfW=halfW*.62;
-    const innerFront=front*.74;
-    const innerBack=back*.42;
+    const innerFront=front*.72;
+    const innerBack=back*.40;
     const q1={x:cx-ray.x*innerBack-perp.x*innerHalfW, y:cy-ray.y*innerBack-perp.y*innerHalfW};
     const q2={x:cx-ray.x*innerBack+perp.x*innerHalfW, y:cy-ray.y*innerBack+perp.y*innerHalfW};
     const q3={x:cx+ray.x*innerFront+perp.x*(innerHalfW*.82), y:cy+ray.y*innerFront+perp.y*(innerHalfW*.82)};
     const q4={x:cx+ray.x*innerFront-perp.x*(innerHalfW*.82), y:cy+ray.y*innerFront-perp.y*(innerHalfW*.82)};
 
-    return {active:true, exposure, alpha, cx, cy, ray, perp, poly:[p1,p2,p3,p4], innerPoly:[q1,q2,q3,q4]};
+    return {active:true, exposure, alpha, cx, cy, ray, perp, poly:[p1,p2,p3,p4], innerPoly:[q1,q2,q3,q4], golden};
   }
 
   function wallSunMarkup(geom,w){
     if(!geom.active) return {html:'',active:false};
     const pal=sunPalette(simulatedHour);
 
-    const broad=polygonMarkup(geom.poly,pal.broad,geom.alpha*.54,'url(#sunBlur)');
-    const fill=polygonMarkup(geom.poly,pal.fill,geom.alpha*.30);
+    const broad=polygonMarkup(geom.poly,pal.broad,geom.alpha*.60,'url(#sunBlur)');
+    const fill=polygonMarkup(geom.poly,pal.fill,geom.alpha*.34);
 
     const p1=geom.poly[0], p2=geom.poly[1], p3=geom.poly[2], p4=geom.poly[3];
-    const t=0.26;
+    const t=0.24;
     const q1={x:p1.x+(p4.x-p1.x)*t, y:p1.y+(p4.y-p1.y)*t};
     const q2={x:p2.x+(p3.x-p2.x)*t, y:p2.y+(p3.y-p2.y)*t};
-    const windowBand=polygonMarkup([p1,p2,q2,q1],pal.hot,geom.alpha*.70,'url(#lightBlur)');
+    const windowBand=polygonMarkup([p1,p2,q2,q1],pal.hot,geom.alpha*.78,'url(#lightBlur)');
 
     if(w.blinds){
       const dx=w.x2-w.x1,dy=w.y2-w.y1;
+      const stripCount=10;
+      const litWidth=.28;
+      const spacing=.095;
       let strips='';
-      for(let i=0;i<7;i++){
-        const a=i/7,b=(i+.42)/7;
+      for(let i=0;i<stripCount;i++){
+        const a=i/stripCount + spacing*.25;
+        const b=Math.min(1, a+litWidth/stripCount + spacing*.28);
         const s1={x:w.x1+dx*a,y:w.y1+dy*a};
         const s2={x:w.x1+dx*b,y:w.y1+dy*b};
         strips += polygonMarkup([
           s1,s2,
           {x:s2.x+geom.ray.x*geom.depth,y:s2.y+geom.ray.y*geom.depth},
           {x:s1.x+geom.ray.x*geom.depth,y:s1.y+geom.ray.y*geom.depth}
-        ],pal.accent,geom.alpha*.96,'url(#lightBlur)');
+        ],pal.accent,geom.alpha*.98,'url(#lightBlur)');
       }
-      return {html:broad+fill+windowBand+strips,active:true};
+      const coreStrip=polygonMarkup([
+        {x:p1.x+(p2.x-p1.x)*.14, y:p1.y+(p2.y-p1.y)*.14},
+        {x:p1.x+(p2.x-p1.x)*.86, y:p1.y+(p2.y-p1.y)*.86},
+        {x:p4.x+(p3.x-p4.x)*.86, y:p4.y+(p3.y-p4.y)*.86},
+        {x:p4.x+(p3.x-p4.x)*.14, y:p4.y+(p3.y-p4.y)*.14}
+      ],pal.hot,geom.alpha*.18,'url(#sunBlur)');
+      return {html:broad+fill+windowBand+coreStrip+strips,active:true};
     }
 
     const centerLine=polygonMarkup([
@@ -2082,7 +2106,7 @@ const db = getFirestore(firebaseApp);
       {x:p1.x+(p2.x-p1.x)*.80, y:p1.y+(p2.y-p1.y)*.80},
       {x:p4.x+(p3.x-p4.x)*.80, y:p4.y+(p3.y-p4.y)*.80},
       {x:p4.x+(p3.x-p4.x)*.20, y:p4.y+(p3.y-p4.y)*.20}
-    ],pal.hot,geom.alpha*.26,'url(#sunBlur)');
+    ],pal.hot,geom.alpha*.30,'url(#sunBlur)');
 
     return {html:broad+fill+windowBand+centerLine,active:true};
   }
@@ -2092,10 +2116,10 @@ const db = getFirestore(firebaseApp);
     const pal=sunPalette(simulatedHour);
     return {
       html:
-        polygonMarkup(geom.poly,pal.broad,geom.alpha*.46,'url(#sunBlur)')+
-        polygonMarkup(geom.poly,pal.fill,geom.alpha*.32,'url(#lightBlur)')+
-        polygonMarkup(geom.innerPoly,pal.hot,geom.alpha*.38,'url(#lightBlur)')+
-        polygonMarkup(geom.innerPoly,'#ffffff',geom.alpha*.10),
+        polygonMarkup(geom.poly,pal.broad,geom.alpha*.54,'url(#sunBlur)')+
+        polygonMarkup(geom.poly,pal.fill,geom.alpha*.36,'url(#lightBlur)')+
+        polygonMarkup(geom.innerPoly,pal.hot,geom.alpha*.44,'url(#lightBlur)')+
+        polygonMarkup(geom.innerPoly,'#ffffff',geom.alpha*.12),
       active:true
     };
   }
@@ -2170,10 +2194,10 @@ const db = getFirestore(firebaseApp);
       }
     }
 
-    const b=clamp(brightness, .52, 1.34);
-    const shadowAlpha=clamp(.20 + strongest*.26 + daylight*.06, .20, .44);
-    const shadowBlur=clamp(5.0 - strongest*2.0 + (1-daylight)*.8, 2.6, 5.8);
-    const shadowOffset=clamp(2.8 + strongest*10.8, 2.8, 12.0);
+    const b=clamp(brightness, .52, 1.42);
+    const shadowAlpha=clamp(.22 + strongest*.28 + daylight*.08, .22, .48);
+    const shadowBlur=clamp(4.8 - strongest*2.2 + (1-daylight)*.7, 2.4, 5.6);
+    const shadowOffset=clamp(3.0 + strongest*11.2, 3.0, 12.5);
     return {brightness:b, shadowAlpha, shadowBlur, shadowOffset, dominant};
   }
 
@@ -2184,11 +2208,11 @@ const db = getFirestore(firebaseApp);
       const model=computeItemLightModel(item, lampInfos, sunGeoms, daylight, sunAz);
       const dx=(model.dominant.dx*model.shadowOffset).toFixed(2);
       const dy=(model.dominant.dy*model.shadowOffset).toFixed(2);
-      const localBrightness = Math.max(.80, model.brightness);
+      const localBrightness = Math.max(.82, model.brightness);
       g.style.filter=
         `brightness(${localBrightness.toFixed(3)}) `+
-        `contrast(1.05) `+
-        `saturate(${(0.99 + (localBrightness-0.82)*0.22).toFixed(3)}) `+
+        `contrast(1.06) `+
+        `saturate(${(1.00 + (localBrightness-0.82)*0.24).toFixed(3)}) `+
         `drop-shadow(${dx}px ${dy}px ${model.shadowBlur.toFixed(2)}px rgba(15,23,42,${model.shadowAlpha.toFixed(3)}))`;
       g.style.opacity='1';
     }
