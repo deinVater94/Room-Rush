@@ -937,7 +937,7 @@
       <section class="panel-pane" data-pane-content="light">
         <div class="selected-title">☀ 24h Lichtsimulation</div>
         <div class="hint" style="margin-top:8px">
-          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung nutzt jetzt eine ressourcensparende 2D-Lightmap im illustrativen Stil: texturierter Boden, sanfte Raum-Vignette, gerichtete Möbel-Schatten und eine realistischere Stehlampen-Lichtfläche mit Boden-Pool plus Raum-Streulicht.
+          F1 ist jetzt als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Die Darstellung behandelt die Stehlampe jetzt explizit als einzelnes Lichtobjekt: mit separatem Raum-Streulicht, gerichtetem Boden-Pool und eigenem Hotspot – näher am Referenzlook.
         </div>
         <div class="kv" style="margin-top:12px">
           <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
@@ -1793,6 +1793,7 @@ const db = getFirestore(firebaseApp);
     {x:0,y:0},{x:496,y:0},{x:496,y:67},{x:506,y:67},{x:506,y:0},
     {x:783,y:0},{x:783,y:251},{x:498,y:251},{x:498,y:465},{x:0,y:465}
   ];
+  const ROOM_CENTER = {x:318, y:196};
 
   const WINDOWS = [
     {
@@ -1920,44 +1921,62 @@ const db = getFirestore(firebaseApp);
     return `<polygon points="${pointsAttr(points)}" fill="${fill}" opacity="${opacity.toFixed(3)}"${f}/>`;
   }
 
-  function lampLightMarkup(item,intensity){
-    const poly=visibilityPolygon({x:item.x,y:item.y});
+  function lampLightMarkup(li){
+    const item=li.lamp;
+    const poly=li.poly;
     if(poly.length<3) return '';
     const id=`lampGrad${++lightGradientSerial}`;
-    const range=315;
-    const brightness=clamp(intensity,.15,1);
+    const brightness=clamp(li.intensity,.15,1);
 
-    const poolCx=(item.x + 16).toFixed(1);
-    const poolCy=(item.y + 14).toFixed(1);
-    const poolRotate=22;
+    const dirX=li.focus.x, dirY=li.focus.y;
+    const angle=(Math.atan2(dirY,dirX)*180/Math.PI).toFixed(2);
+
+    const broadCx=(item.x + dirX*28).toFixed(1);
+    const broadCy=(item.y + dirY*28).toFixed(1);
+    const broadRx=(112 + brightness*10).toFixed(1);
+    const broadRy=(84 + brightness*8).toFixed(1);
+
+    const coreCx=(item.x + dirX*40).toFixed(1);
+    const coreCy=(item.y + dirY*34).toFixed(1);
+    const coreRx=(74 + brightness*6).toFixed(1);
+    const coreRy=(52 + brightness*5).toFixed(1);
+
+    const hotCx=(item.x + dirX*22).toFixed(1);
+    const hotCy=(item.y + dirY*20).toFixed(1);
 
     return `
       <defs>
         <radialGradient id="${id}Room" gradientUnits="userSpaceOnUse"
-          cx="${item.x}" cy="${item.y}" r="${range}">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.30*brightness).toFixed(3)}"/>
-          <stop offset="25%" stop-color="#f7fbff" stop-opacity="${(0.22*brightness).toFixed(3)}"/>
-          <stop offset="62%" stop-color="#deebf8" stop-opacity="${(0.10*brightness).toFixed(3)}"/>
-          <stop offset="100%" stop-color="#deebf8" stop-opacity="0"/>
+          cx="${item.x}" cy="${item.y}" r="${li.range}">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.16*brightness).toFixed(3)}"/>
+          <stop offset="28%" stop-color="#f6fbff" stop-opacity="${(0.13*brightness).toFixed(3)}"/>
+          <stop offset="72%" stop-color="#d9e8f7" stop-opacity="${(0.045*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#d9e8f7" stop-opacity="0"/>
         </radialGradient>
-        <radialGradient id="${id}Pool" gradientUnits="userSpaceOnUse"
-          cx="${poolCx}" cy="${poolCy}" r="118">
-          <stop offset="0%" stop-color="#fffef8" stop-opacity="${(0.58*brightness).toFixed(3)}"/>
-          <stop offset="22%" stop-color="#fff7dc" stop-opacity="${(0.42*brightness).toFixed(3)}"/>
-          <stop offset="58%" stop-color="#ffe8ba" stop-opacity="${(0.17*brightness).toFixed(3)}"/>
-          <stop offset="100%" stop-color="#ffe8ba" stop-opacity="0"/>
+        <radialGradient id="${id}Broad" gradientUnits="userSpaceOnUse"
+          cx="${broadCx}" cy="${broadCy}" r="150">
+          <stop offset="0%" stop-color="#fffef9" stop-opacity="${(0.24*brightness).toFixed(3)}"/>
+          <stop offset="36%" stop-color="#fff6df" stop-opacity="${(0.15*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#ffe9bc" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="${id}Core" gradientUnits="userSpaceOnUse"
+          cx="${coreCx}" cy="${coreCy}" r="100">
+          <stop offset="0%" stop-color="#fffdf8" stop-opacity="${(0.34*brightness).toFixed(3)}"/>
+          <stop offset="32%" stop-color="#fff2cb" stop-opacity="${(0.24*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#ffe6b2" stop-opacity="0"/>
         </radialGradient>
         <radialGradient id="${id}Hot" gradientUnits="userSpaceOnUse"
-          cx="${poolCx}" cy="${poolCy}" r="54">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.30*brightness).toFixed(3)}"/>
-          <stop offset="42%" stop-color="#fff9e8" stop-opacity="${(0.14*brightness).toFixed(3)}"/>
-          <stop offset="100%" stop-color="#fff9e8" stop-opacity="0"/>
+          cx="${hotCx}" cy="${hotCy}" r="46">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.22*brightness).toFixed(3)}"/>
+          <stop offset="55%" stop-color="#fff7df" stop-opacity="${(0.09*brightness).toFixed(3)}"/>
+          <stop offset="100%" stop-color="#fff7df" stop-opacity="0"/>
         </radialGradient>
       </defs>
       <polygon points="${pointsAttr(poly)}" fill="url(#${id}Room)" filter="url(#lightBlur)"/>
-      <ellipse cx="${poolCx}" cy="${poolCy}" rx="102" ry="78" transform="rotate(${poolRotate} ${poolCx} ${poolCy})" fill="url(#${id}Pool)" filter="url(#lightBlur)"/>
-      <ellipse cx="${poolCx}" cy="${poolCy}" rx="52" ry="38" transform="rotate(${poolRotate} ${poolCx} ${poolCy})" fill="url(#${id}Hot)" filter="url(#lightBlur)"/>
-      <circle cx="${item.x}" cy="${item.y}" r="11" fill="#ffffff" opacity="${(0.08*brightness).toFixed(3)}"/>
+      <ellipse cx="${broadCx}" cy="${broadCy}" rx="${broadRx}" ry="${broadRy}" transform="rotate(${angle} ${broadCx} ${broadCy})" fill="url(#${id}Broad)" filter="url(#lightBlur)"/>
+      <ellipse cx="${coreCx}" cy="${coreCy}" rx="${coreRx}" ry="${coreRy}" transform="rotate(${angle} ${coreCx} ${coreCy})" fill="url(#${id}Core)" filter="url(#lightBlur)"/>
+      <ellipse cx="${hotCx}" cy="${hotCy}" rx="40" ry="28" transform="rotate(${angle} ${hotCx} ${hotCy})" fill="url(#${id}Hot)" filter="url(#lightBlur)"/>
+      <circle cx="${item.x}" cy="${item.y}" r="8" fill="#ffffff" opacity="${(0.10*brightness).toFixed(3)}"/>
     `;
   }
 
@@ -2047,7 +2066,18 @@ const db = getFirestore(firebaseApp);
   function computeLampInfos(daylight){
     const lamps=items.filter(i=>i.type==='floorlamp');
     const intensity=clamp((.42-daylight)/.42,.20,1);
-    return lamps.map(l=>({lamp:l, poly:visibilityPolygon({x:l.x,y:l.y}), range:340, intensity}));
+    return lamps.map(l=>{
+      let dx=ROOM_CENTER.x-l.x, dy=ROOM_CENTER.y-l.y;
+      const len=Math.hypot(dx,dy)||1;
+      dx/=len; dy/=len;
+      return {
+        lamp:l,
+        poly:visibilityPolygon({x:l.x,y:l.y}),
+        range:320,
+        intensity,
+        focus:{x:dx,y:dy}
+      };
+    });
   }
 
   function computeItemLightModel(item, lampInfos, sunGeoms, daylight, sunAz){
@@ -2062,8 +2092,8 @@ const db = getFirestore(firebaseApp);
       const dx=pt.x-li.lamp.x, dy=pt.y-li.lamp.y;
       const dist=Math.hypot(dx,dy);
       if(dist>li.range) continue;
-      const hit=li.intensity*Math.pow(1 - dist/li.range, 1.45);
-      brightness += hit*.95;
+      const hit=li.intensity*Math.pow(1 - dist/li.range, 1.7);
+      brightness += hit*.78;
       if(hit>strongest){
         strongest=hit;
         const len=Math.hypot(dx,dy)||1;
@@ -2087,10 +2117,10 @@ const db = getFirestore(firebaseApp);
       }
     }
 
-    const b=clamp(brightness, .46, 1.34);
-    const shadowAlpha=clamp(.16 + strongest*.22 + (1-daylight)*.12, .16, .42);
-    const shadowBlur=clamp(2.8 + strongest*4.5, 2.8, 7.5);
-    const shadowOffset=clamp(2.2 + strongest*10.5, 2.2, 11.5);
+    const b=clamp(brightness, .54, 1.26);
+    const shadowAlpha=clamp(.18 + strongest*.18 + (1-daylight)*.10, .18, .36);
+    const shadowBlur=clamp(3.0 + strongest*3.8, 3.0, 6.8);
+    const shadowOffset=clamp(2.4 + strongest*9.0, 2.4, 9.8);
     return {brightness:b, shadowAlpha, shadowBlur, shadowOffset, dominant};
   }
 
@@ -2101,11 +2131,11 @@ const db = getFirestore(firebaseApp);
       const model=computeItemLightModel(item, lampInfos, sunGeoms, daylight, sunAz);
       const dx=(model.dominant.dx*model.shadowOffset).toFixed(2);
       const dy=(model.dominant.dy*model.shadowOffset).toFixed(2);
-      const localBrightness = Math.max(.76, model.brightness);
+      const localBrightness = Math.max(.80, model.brightness);
       g.style.filter=
         `brightness(${localBrightness.toFixed(3)}) `+
-        `contrast(1.02) `+
-        `saturate(${(0.98 + (localBrightness-0.78)*0.24).toFixed(3)}) `+
+        `contrast(1.03) `+
+        `saturate(${(0.99 + (localBrightness-0.82)*0.22).toFixed(3)}) `+
         `drop-shadow(${dx}px ${dy}px ${model.shadowBlur.toFixed(2)}px rgba(15,23,42,${model.shadowAlpha.toFixed(3)}))`;
       g.style.opacity='1';
     }
@@ -2124,12 +2154,12 @@ const db = getFirestore(firebaseApp);
     const autoLights=document.getElementById('autoRoomLights')?.checked ?? true;
 
     if(ambient){
-      const opacity=clamp(.05 + darkness*.28, .05, .33);
+      const opacity=clamp(.04 + darkness*.24, .04, .28);
       ambient.setAttribute('opacity',opacity.toFixed(3));
       ambient.setAttribute('fill',darkness>.75?'#101a29':'#162338');
     }
     if(ambientVignette){
-      const vignetteOpacity=clamp(.04 + darkness*.22, .04, .28);
+      const vignetteOpacity=clamp(.03 + darkness*.18, .03, .22);
       ambientVignette.setAttribute('opacity',vignetteOpacity.toFixed(3));
     }
 
@@ -2139,7 +2169,7 @@ const db = getFirestore(firebaseApp);
     if(roomLights){
       lightGradientSerial=0;
       let out='';
-      for(const li of lampInfos) out += lampLightMarkup(li.lamp, li.intensity);
+      for(const li of lampInfos) out += lampLightMarkup(li);
       roomLights.innerHTML=out;
     }
 
