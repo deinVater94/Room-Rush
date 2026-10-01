@@ -658,6 +658,95 @@
     .layout-viewer-actions button{width:33px!important;height:33px!important}
     .layout-viewer-hint{font-size:9px!important;padding:5px 8px!important}
   }
+
+  /* --- V29: mobile performance + clearer UX --- */
+  .help-btn{
+    flex:0 0 auto;width:34px;height:34px;border-radius:50%;
+    padding:0;border:1px solid #475569;background:#1e293b;color:#fff;
+    font-weight:950;font-size:16px;display:grid;place-items:center
+  }
+
+  .swipe-legend{
+    max-width:430px;margin:10px auto 0;display:flex;justify-content:space-between;
+    gap:12px;font-size:12px;font-weight:900;color:#64748b
+  }
+  .swipe-legend .left{color:#dc2626}
+  .swipe-legend .right{color:#16a34a}
+  .swipe-action-wrap{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .swipe-action-label{font-size:11px;font-weight:900;color:#64748b}
+
+  .light-fab{
+    position:absolute;left:10px;top:48px;z-index:87;
+    height:38px;padding:0 11px;border-radius:999px;
+    border:1px solid rgba(148,163,184,.7);
+    background:rgba(255,255,255,.94);color:#111827;
+    box-shadow:0 7px 22px rgba(15,23,42,.16);
+    font-weight:900;display:flex;align-items:center;gap:6px;
+    backdrop-filter:blur(8px)
+  }
+  .light-fab-time{font-size:10px;color:#64748b;font-variant-numeric:tabular-nums}
+
+  .light-popover{
+    position:absolute;left:10px;top:92px;z-index:89;
+    width:min(340px,calc(100% - 20px));
+    max-height:min(70vh,540px);overflow:auto;
+    display:none;padding:13px;border-radius:18px;
+    background:rgba(255,255,255,.97);
+    border:1px solid #dbe3ef;
+    box-shadow:0 18px 52px rgba(15,23,42,.26)
+  }
+  .light-popover.open{display:block}
+  .light-popover-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px
+  }
+  .light-popover-head strong{font-size:14px}
+  .light-popover-head span{display:block;font-size:10px;color:#64748b;margin-top:2px}
+  .light-close{width:32px;height:32px;padding:0;border-radius:9px}
+  .light-popover .kv{font-size:11px}
+  .light-popover .row{gap:6px}
+  .light-popover .row button{font-size:10px;padding:8px 7px}
+  .light-popover input[type="range"]{width:100%}
+
+  .onboarding{
+    position:fixed;inset:0;z-index:520;display:none;
+    align-items:center;justify-content:center;padding:18px;
+    background:rgba(15,23,42,.72)
+  }
+  .onboarding.open{display:flex}
+  .onboarding-card{
+    width:min(470px,100%);background:#fff;border-radius:24px;padding:20px;
+    box-shadow:0 26px 90px rgba(0,0,0,.34)
+  }
+  .onboarding-card h2{margin:0 0 5px;font-size:23px}
+  .onboarding-card>p{margin:0 0 16px;color:#64748b;font-size:13px}
+  .onboarding-steps{display:grid;gap:9px;margin:0 0 17px}
+  .onboarding-step{
+    display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;
+    padding:11px;border:1px solid #e2e8f0;border-radius:15px;background:#f8fafc
+  }
+  .onboarding-step .icon{
+    width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+    background:#ede9fe;font-size:21px
+  }
+  .onboarding-step strong{display:block;font-size:13px;color:#111827}
+  .onboarding-step span{display:block;margin-top:2px;font-size:11px;color:#64748b}
+  .onboarding-start{width:100%;height:46px;font-size:14px;font-weight:950}
+
+  @media(max-width:980px){
+    /* expensive blur on several fixed layers is a noticeable cost on phones */
+    .game-tabs,.panel,.light-fab{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+    .panel{background:#fff!important}
+    .game-tabs{background:#0f172a!important}
+    .swipe-card{box-shadow:0 10px 25px rgba(15,23,42,.13)!important}
+    .light-fab{top:48px}
+    .light-popover{
+      position:fixed;left:10px;right:10px;top:calc(66px + env(safe-area-inset-top));
+      width:auto;max-height:calc(100dvh - 142px - env(safe-area-inset-bottom));
+      z-index:94
+    }
+    .onboarding-card{padding:17px;border-radius:20px}
+  }
+
 </style>
 </head>
 <body>
@@ -672,9 +761,10 @@
     <div class="hud-chip">🔥 Layouts <b id="hudCommunity">0</b></div>
     <div class="hud-chip">☁️ Firebase <b id="hudCloud">verbinde…</b></div>
   </div>
+  <button class="help-btn" id="helpBtn" type="button" aria-label="So funktioniert WohnzimmerTinder">?</button>
   <nav class="game-tabs">
-    <button class="tab-btn active" data-view="layout">🛠 Layout</button>
-    <button class="tab-btn" data-view="swipe">🔥 Swipe</button>
+    <button class="tab-btn active" data-view="swipe">🔥 Swipe</button>
+    <button class="tab-btn" data-view="layout">🛠 Layout bauen</button>
     <button class="tab-btn" data-view="leader">🏆 Top</button>
   </nav>
 </div>
@@ -879,6 +969,49 @@
       <g id="roomLightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
       <g id="labelLayer" pointer-events="none"></g>
     </svg>
+
+    <button class="light-fab" id="lightFab" type="button" aria-expanded="false" aria-controls="lightPopover">
+      ☀ Licht <span class="light-fab-time" id="lightFabTime">13:00</span>
+    </button>
+
+    <div class="light-popover" id="lightPopover">
+      <div class="light-popover-head">
+        <div>
+          <strong>☀ 24h Lichtsimulation</strong>
+          <span>läuft automatisch · 24h in 60s</span>
+        </div>
+        <button class="light-close" id="lightCloseBtn" type="button" aria-label="Licht schließen">✕</button>
+      </div>
+
+      <div class="kv">
+        <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
+        <div>Tagesphase</div><div class="value" id="lightPhaseLabel">Tag</div>
+        <div>Sonnenrichtung</div><div class="value" id="lightSunAzLabel">—</div>
+        <div>Aktive Fenster</div><div class="value" id="lightWindowHitLabel">—</div>
+      </div>
+
+      <input id="lightTimeSlider" type="range" min="0" max="24" step="0.25" value="13">
+
+      <div class="row">
+        <button id="lightMorningBtn">🌅 07</button>
+        <button id="lightNoonBtn">☀ 13</button>
+        <button id="lightEveningBtn">🌇 19</button>
+        <button id="lightNightBtn">🌙 23</button>
+      </div>
+
+      <div class="row">
+        <button id="lightPlayMinuteBtn">↻ Loop neu starten</button>
+        <button id="lightPauseBtn">⏸ Pause</button>
+      </div>
+
+      <div class="small" id="lightPlaybackStatus">24h-Loop startet automatisch</div>
+
+      <label class="row" style="justify-content:flex-start">
+        <input id="autoRoomLights" type="checkbox" checked>
+        Stehlampen nachts automatisch einschalten
+      </label>
+    </div>
+
   </div>
 
   <aside class="panel" id="toolPanel">
@@ -892,11 +1025,10 @@
     </div>
 
     <div class="panel-body">
-      <div class="panel-tabs" style="grid-template-columns:repeat(4,1fr)">
+      <div class="panel-tabs" style="grid-template-columns:repeat(3,1fr)">
         <button class="panel-tab active" data-pane="möbel">🧩 Möbel</button>
         <button class="panel-tab" data-pane="edit">🎛 Edit</button>
         <button class="panel-tab" data-pane="run">🚀 Layout</button>
-        <button class="panel-tab" data-pane="light">☀ Licht</button>
       </div>
 
       <section class="panel-pane active" data-pane-content="möbel">
@@ -931,40 +1063,6 @@
         </div>
         <div class="small">Reset löscht nur das aktuell gebaute Layout. Gespeicherte Layouts bleiben erhalten.</div>
         <div class="privacy-note">MAP 01 zeigt keine realen Maßangaben oder persönlichen Raum-Markierungen. Die Geometrie bleibt als Spielkarte konstant.</div>
-      </section>
-
-
-      <section class="panel-pane" data-pane-content="light">
-        <div class="selected-title">☀ 24h Lichtsimulation</div>
-        <div class="hint" style="margin-top:8px">
-          F1 ist als Dachfenster modelliert, F2 liegt korrekt auf F–G und F3 bleibt die Balkontür. Dieser Stand basiert wieder auf dem vorherigen Licht-Look und ergänzt zusätzlich eine 24h-Animation, die den kompletten Tagesverlauf in 60 Sekunden abspielt.
-        </div>
-        <div class="kv" style="margin-top:12px">
-          <div>Uhrzeit</div><div class="value" id="lightTimeLabel">13:00</div>
-          <div>Tagesphase</div><div class="value" id="lightPhaseLabel">Tag</div>
-          <div>Sonnenrichtung</div><div class="value" id="lightSunAzLabel">—</div>
-          <div>Aktive Fenster</div><div class="value" id="lightWindowHitLabel">—</div>
-        </div>
-        <input id="lightTimeSlider" type="range" min="0" max="24" step="0.25" value="13" style="width:100%">
-        <div class="row">
-          <button id="lightMorningBtn">🌅 07:00</button>
-          <button id="lightNoonBtn">☀ 13:00</button>
-          <button id="lightEveningBtn">🌇 19:00</button>
-          <button id="lightNightBtn">🌙 23:00</button>
-        </div>
-        <div class="row">
-          <button id="lightPlayMinuteBtn">▶ 24h in 60s</button>
-          <button id="lightPauseBtn">⏸ Pause</button>
-        </div>
-        <div class="small" id="lightPlaybackStatus">Animation aus</div>
-        <label class="row" style="justify-content:flex-start">
-          <input id="autoRoomLights" type="checkbox" checked>
-          Stehlampen nachts automatisch einschalten
-        </label>
-        <div class="map-rule">
-          <strong>Aktive Fenster:</strong> Dachfenster F1, Doppelfenster F2 auf F–G und Balkontür F3.
-          Die Sonnenausrichtung ist auf deine spätere iPhone-Kalibrierung angepasst (A–B ≈ 275° / W).
-        </div>
       </section>
 
       <section class="panel-pane" data-pane-content="run">
@@ -1023,13 +1121,23 @@
 <section class="game-screen" id="swipeView">
   <div class="arena swipe-shell">
     <div class="arena-head">
-      <div><h2>🔥 WohnzimmerSwipe</h2><p>Left = pass · Right = like. Swipe dich durch die Layouts der Community und vote für deine Favoriten. Diese Version testet bereits erste Möbel-Texturen.</p></div>
+      <div><h2>🔥 WohnzimmerSwipe</h2><p>Zieh die Karte nach links zum Überspringen oder nach rechts für ein Like. Deine Likes bestimmen die Top-Liste.</p></div>
       <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
+    <div class="swipe-legend" aria-hidden="true">
+      <span class="left">← links = weiter</span>
+      <span class="right">rechts = Like →</span>
+    </div>
     <div class="swipe-actions" id="swipeActions">
-      <button class="swipe-action pass" id="passBtn" aria-label="Weiter">✕</button>
-      <button class="swipe-action like" id="likeBtn" aria-label="Gefällt mir">♥</button>
+      <div class="swipe-action-wrap">
+        <button class="swipe-action pass" id="passBtn" aria-label="Weiter">✕</button>
+        <span class="swipe-action-label">Weiter</span>
+      </div>
+      <div class="swipe-action-wrap">
+        <button class="swipe-action like" id="likeBtn" aria-label="Gefällt mir">♥</button>
+        <span class="swipe-action-label">Gefällt mir</span>
+      </div>
     </div>
   </div>
 </section>
@@ -1649,6 +1757,19 @@ const db = getFirestore(firebaseApp);
   });
   document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>setPanelPane(b.dataset.pane,false)));
 
+  // ---------- Floating light controls ----------
+  const lightPopover=document.getElementById('lightPopover');
+  const lightFab=document.getElementById('lightFab');
+
+  function setLightPopover(open){
+    lightPopover.classList.toggle('open',!!open);
+    lightFab.setAttribute('aria-expanded',open?'true':'false');
+    if(open && window.matchMedia('(max-width:980px)').matches) setPanelOpen(false);
+  }
+
+  lightFab.addEventListener('click',()=>setLightPopover(!lightPopover.classList.contains('open')));
+  document.getElementById('lightCloseBtn').addEventListener('click',()=>setLightPopover(false));
+
   // ---------- Map camera: buttons, wheel, background pan and pinch ----------
   const BASE_VIEW={x:-70,y:-70,w:920,h:585};
   let camera={...BASE_VIEW};
@@ -1819,9 +1940,11 @@ const db = getFirestore(firebaseApp);
   let simulatedHour=13;
   let lightGradientSerial=0;
   let lightPlaybackTimer=null;
+  let lightPlaybackRunning=false;
   let lightPlaybackStartMs=0;
-  let lightPlaybackStartHour=13;
+  let lightPlaybackStartHour=0;
   const LIGHT_PLAYBACK_DURATION_MS = 60000;
+  const LIGHT_RENDER_INTERVAL_MS = window.matchMedia('(max-width:980px)').matches ? 125 : 75;
 
   function daylightAmount(hour){
     if(hour<6 || hour>20) return 0;
@@ -2204,6 +2327,8 @@ const db = getFirestore(firebaseApp);
   }
 
   function renderLighting(){
+    if(document.body.dataset.view!=='layout') return;
+
     const daylight=daylightAmount(simulatedHour);
     const darkness=1-daylight;
     const sunAz=sunAzimuth(simulatedHour);
@@ -2254,6 +2379,8 @@ const db = getFirestore(firebaseApp);
     const hitEl=document.getElementById('lightWindowHitLabel');
 
     if(time) time.textContent=formatHour(simulatedHour);
+    const fabTime=document.getElementById('lightFabTime');
+    if(fabTime) fabTime.textContent=formatHour(simulatedHour);
     if(phase) phase.textContent=phaseName(simulatedHour);
     if(azEl) azEl.textContent=sunAz==null?'keine Sonne':`${Math.round(sunAz)}°`;
     if(hitEl) hitEl.textContent=activeWindows.length?activeWindows.join(', '):'kein direktes Licht';
@@ -2275,51 +2402,63 @@ const db = getFirestore(firebaseApp);
   }
 
   function stopLightPlayback(resetStatus=true){
+    lightPlaybackRunning=false;
     if(lightPlaybackTimer){
-      cancelAnimationFrame(lightPlaybackTimer);
+      clearTimeout(lightPlaybackTimer);
       lightPlaybackTimer=null;
     }
-    if(resetStatus) updateLightPlaybackStatus('Animation aus', false);
+    if(resetStatus) updateLightPlaybackStatus('Animation pausiert', false);
   }
 
-  function startLightPlayback(durationMs=LIGHT_PLAYBACK_DURATION_MS){
+  function startLightPlayback(durationMs=LIGHT_PLAYBACK_DURATION_MS,startHour=0){
     stopLightPlayback(false);
-    lightPlaybackStartMs = performance.now();
-    lightPlaybackStartHour = simulatedHour;
-    updateLightPlaybackStatus('24h-Animation läuft (60s)', true);
+    lightPlaybackRunning=true;
+    lightPlaybackStartMs=performance.now();
+    lightPlaybackStartHour=Number(startHour)||0;
+    updateLightPlaybackStatus('↻ 24h-Loop läuft · 60s pro Tag', true);
 
-    const tick = (now)=>{
-      const elapsed = now - lightPlaybackStartMs;
-      const progress = elapsed / durationMs;
-      if(progress >= 1){
-        setSimulatedHour(lightPlaybackStartHour + 24);
-        stopLightPlayback();
-        updateLightPlaybackStatus('Animation fertig – 24h abgespielt', false);
-        return;
+    const tick=()=>{
+      if(!lightPlaybackRunning) return;
+
+      const now=performance.now();
+      const progress=((now-lightPlaybackStartMs)%durationMs)/durationMs;
+      simulatedHour=((lightPlaybackStartHour+progress*24)%24+24)%24;
+
+      const slider=document.getElementById('lightTimeSlider');
+      if(slider) slider.value=String(simulatedHour);
+
+      if(!document.hidden && document.body.dataset.view==='layout'){
+        renderLighting();
       }
-      setSimulatedHour(lightPlaybackStartHour + progress*24);
-      lightPlaybackTimer = requestAnimationFrame(tick);
+
+      lightPlaybackTimer=setTimeout(
+        tick,
+        document.hidden ? 500 : LIGHT_RENDER_INTERVAL_MS
+      );
     };
 
-    lightPlaybackTimer = requestAnimationFrame(tick);
+    tick();
   }
 
   function initLightingControls(){
     const slider=document.getElementById('lightTimeSlider');
     if(!slider) return;
+
     slider.addEventListener('input',()=>{
       stopLightPlayback();
       setSimulatedHour(slider.value);
     });
+
     document.getElementById('autoRoomLights')?.addEventListener('change',renderLighting);
-    document.getElementById('lightMorningBtn').onclick=()=>{ stopLightPlayback(); setSimulatedHour(7); };
-    document.getElementById('lightNoonBtn').onclick=()=>{ stopLightPlayback(); setSimulatedHour(13); };
-    document.getElementById('lightEveningBtn').onclick=()=>{ stopLightPlayback(); setSimulatedHour(19); };
-    document.getElementById('lightNightBtn').onclick=()=>{ stopLightPlayback(); setSimulatedHour(23); };
-    document.getElementById('lightPlayMinuteBtn')?.addEventListener('click',()=>startLightPlayback());
+    document.getElementById('lightMorningBtn').onclick=()=>{stopLightPlayback();setSimulatedHour(7);};
+    document.getElementById('lightNoonBtn').onclick=()=>{stopLightPlayback();setSimulatedHour(13);};
+    document.getElementById('lightEveningBtn').onclick=()=>{stopLightPlayback();setSimulatedHour(19);};
+    document.getElementById('lightNightBtn').onclick=()=>{stopLightPlayback();setSimulatedHour(23);};
+    document.getElementById('lightPlayMinuteBtn')?.addEventListener('click',()=>startLightPlayback(LIGHT_PLAYBACK_DURATION_MS,0));
     document.getElementById('lightPauseBtn')?.addEventListener('click',()=>stopLightPlayback());
-    setSimulatedHour(13);
-    updateLightPlaybackStatus('Animation aus', false);
+
+    setSimulatedHour(0);
+    startLightPlayback(LIGHT_PLAYBACK_DURATION_MS,0);
   }
 
 
@@ -3302,13 +3441,51 @@ const db = getFirestore(firebaseApp);
     });
   }
 
+
+  // ---------- First-use guidance ----------
+  const ONBOARDING_KEY='wohnzimmerTinder-onboarding-v1';
+
+  function openOnboarding(){
+    const el=document.getElementById('onboarding');
+    el.classList.add('open');
+    el.setAttribute('aria-hidden','false');
+  }
+
+  function closeOnboarding(saveChoice=true){
+    const el=document.getElementById('onboarding');
+    el.classList.remove('open');
+    el.setAttribute('aria-hidden','true');
+    if(saveChoice){
+      try{localStorage.setItem(ONBOARDING_KEY,'1')}catch(_){}
+    }
+  }
+
+  document.getElementById('helpBtn').addEventListener('click',openOnboarding);
+  document.getElementById('onboardingStartBtn').addEventListener('click',()=>{
+    closeOnboarding(true);
+    setView('swipe');
+  });
+  document.getElementById('onboarding').addEventListener('click',e=>{
+    if(e.target.id==='onboarding') closeOnboarding(true);
+  });
+
   function setView(view){
     document.body.dataset.view=view;
     layoutView.style.display=view==='layout'?'':'none';
     swipeView.style.display=view==='swipe'?'block':'none';
     leaderView.style.display=view==='leader'?'block':'none';
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-    if(view!=='layout') setPanelOpen(false);
+
+    if(view!=='layout'){
+      setPanelOpen(false);
+      setLightPopover(false);
+    }else{
+      requestAnimationFrame(()=>{
+        fitMap();
+        renderLighting();
+      });
+    }
+
     if(view==='swipe'){refreshCommunity(false);}
     if(view==='leader'){refreshCommunity(false);}
   }
@@ -3410,7 +3587,7 @@ const db = getFirestore(firebaseApp);
     }
   });
 
-  document.body.dataset.view='layout';
+  document.body.dataset.view='swipe';
   initFullscreenLayoutViewer();
   initLightingControls();
   load();
@@ -3418,7 +3595,16 @@ const db = getFirestore(firebaseApp);
   renderAll();
   renderLeaderboard();
   resetSwipeQueue();
+  setView('swipe');
   importFromHash();
+
+  try{
+    if(localStorage.getItem(ONBOARDING_KEY)!=='1'){
+      setTimeout(openOnboarding,250);
+    }
+  }catch(_){
+    setTimeout(openOnboarding,250);
+  }
 })();
 </script>
 
@@ -3442,6 +3628,30 @@ const db = getFirestore(firebaseApp);
       <svg id="layoutViewerSvg"></svg>
     </div>
     <div class="layout-viewer-hint">Pinch = Zoom · Ziehen = Bewegen · Doppeltippen = Fit</div>
+  </div>
+</div>
+
+<div class="onboarding" id="onboarding" aria-hidden="true">
+  <div class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <h2 id="onboardingTitle">WohnzimmerTinder in 10 Sekunden</h2>
+    <p>Ein Raum, viele Ideen. So funktioniert’s:</p>
+
+    <div class="onboarding-steps">
+      <div class="onboarding-step">
+        <div class="icon">🔥</div>
+        <div><strong>1 · Swipen</strong><span>Links = weiter. Rechts = Like. Damit entsteht das Community-Ranking.</span></div>
+      </div>
+      <div class="onboarding-step">
+        <div class="icon">🛠</div>
+        <div><strong>2 · Layout bauen</strong><span>Möbel auf die Karte setzen, drehen und alle Items verwenden.</span></div>
+      </div>
+      <div class="onboarding-step">
+        <div class="icon">🏆</div>
+        <div><strong>3 · Top ansehen</strong><span>Die beliebtesten Designs öffnen, vergrößern und vergleichen.</span></div>
+      </div>
+    </div>
+
+    <button class="primary onboarding-start" id="onboardingStartBtn">🔥 Los swipen</button>
   </div>
 </div>
 </body>
