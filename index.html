@@ -829,6 +829,63 @@
     .leader-mini-meta{font-size:8.5px}
   }
 
+
+  /* --- V33: direct publish button on the map --- */
+  .map-publish-btn{
+    position:absolute;
+    right:12px;
+    bottom:12px;
+    z-index:90;
+    min-width:160px;
+    height:44px;
+    padding:0 15px;
+    border-radius:14px;
+    border:1px solid #6d28d9;
+    background:linear-gradient(135deg,#7c3aed,#8b5cf6);
+    color:#fff;
+    font-size:12px;
+    font-weight:950;
+    letter-spacing:.01em;
+    box-shadow:0 10px 28px rgba(124,58,237,.30);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+  }
+  .map-publish-btn:not(:disabled):hover{transform:translateY(-1px)}
+  .map-publish-btn:disabled{
+    cursor:not-allowed;
+    transform:none;
+    color:#64748b;
+    background:rgba(248,250,252,.95);
+    border-color:#cbd5e1;
+    box-shadow:0 6px 18px rgba(15,23,42,.10);
+  }
+  .map-publish-btn.published:disabled{
+    color:#166534;
+    background:rgba(240,253,244,.97);
+    border-color:#86efac;
+  }
+  .map-publish-btn.ready:not(:disabled){
+    animation:publishReadyPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes publishReadyPulse{
+    0%,100%{box-shadow:0 10px 28px rgba(124,58,237,.25)}
+    50%{box-shadow:0 10px 34px rgba(124,58,237,.50)}
+  }
+
+  @media(max-width:980px){
+    .map-publish-btn{
+      right:9px;
+      bottom:9px;
+      min-width:142px;
+      height:40px;
+      padding:0 12px;
+      border-radius:12px;
+      font-size:11px;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -1051,6 +1108,10 @@
       <g id="roomLightLayer" pointer-events="none" clip-path="url(#roomClip)" style="mix-blend-mode:screen"></g>
       <g id="labelLayer" pointer-events="none"></g>
     </svg>
+
+    <button class="map-publish-btn" id="mapPublishBtn" type="button" disabled>
+      🔒 Layout unvollständig
+    </button>
 
     <button class="light-fab" id="lightFab" type="button" aria-expanded="false" aria-controls="lightPopover">
       ☀ Licht <span class="light-fab-time" id="lightFabTime">13:00</span>
@@ -2585,6 +2646,7 @@ const db = getFirestore(firebaseApp);
   let firebaseUser=null;
   let firebaseReady=false;
   let communityCache=[];
+  let publishInFlight=false;
   let votedLayoutIds=new Set();
   let myVotesByLayoutId=new Map();
   let playerPointsByUid=new Map();
@@ -3025,6 +3087,38 @@ const db = getFirestore(firebaseApp);
     );
   }
 
+
+  function layoutSignature(layoutItems=items){
+    const normalized=(layoutItems||[]).map(item=>({
+      type:String(item.type||''),
+      x:Math.round(Number(item.x||0)*10)/10,
+      y:Math.round(Number(item.y||0)*10)/10,
+      r:((Math.round(Number(item.r||0))%360)+360)%360,
+      mirrored:!!item.mirrored,
+      foldedOut:!!item.foldedOut
+    })).sort((a,b)=>
+      a.type.localeCompare(b.type) ||
+      a.x-b.x ||
+      a.y-b.y ||
+      a.r-b.r ||
+      Number(a.mirrored)-Number(b.mirrored) ||
+      Number(a.foldedOut)-Number(b.foldedOut)
+    );
+
+    return JSON.stringify(normalized);
+  }
+
+  function currentLayoutAlreadyPublished(){
+    if(!firebaseUser || !communityCache.length || !items.length) return false;
+
+    const currentSig=layoutSignature(items);
+
+    return communityCache.some(entry=>
+      entry.ownerId===firebaseUser.uid &&
+      layoutSignature(entry.items||[])===currentSig
+    );
+  }
+
   function buildReadiness(){
     const total=totalRequiredItems();
     const placed=items.length;
@@ -3040,6 +3134,51 @@ const db = getFirestore(firebaseApp);
   }
 
   let lastReadyState=false;
+
+
+  function updateMapPublishButton(){
+    const btn=document.getElementById('mapPublishBtn');
+    if(!btn) return;
+
+    const r=buildReadiness();
+    const published=currentLayoutAlreadyPublished();
+
+    btn.classList.remove('ready','published');
+
+    if(publishInFlight){
+      btn.disabled=true;
+      btn.textContent='⏳ Veröffentliche…';
+      return;
+    }
+
+    if(published){
+      btn.disabled=true;
+      btn.classList.add('published');
+      btn.textContent='✓ Bereits veröffentlicht';
+      return;
+    }
+
+    if(!r.ready){
+      btn.disabled=true;
+
+      if(r.allUsed && !r.valid){
+        btn.textContent='⚠ Erst rote Fehler lösen';
+      }else{
+        btn.textContent=`🔒 ${r.placed}/${r.total} Möbel`;
+      }
+      return;
+    }
+
+    if(!firebaseUser || !firebaseReady){
+      btn.disabled=true;
+      btn.textContent='☁️ Firebase verbindet…';
+      return;
+    }
+
+    btn.disabled=false;
+    btn.classList.add('ready');
+    btn.textContent='🏁 Layout veröffentlichen';
+  }
 
   function updateReadyUI(){
     const r=buildReadiness();
@@ -3069,7 +3208,7 @@ const db = getFirestore(firebaseApp);
       title.textContent='READY TO PUBLISH';
       detail.textContent=`Alle ${r.total} Items gesetzt · Layout ist gültig`;
       mini.textContent='READY';
-      help.textContent='Das Layout kann jetzt veröffentlicht und ins Community-Voting geschickt werden.';
+      help.textContent='READY! Tippe direkt auf „Layout veröffentlichen“ in der Karte oder nutze den Button hier.';
       publish.disabled=false;
       publish.textContent='🏁 Publish Layout';
     }else if(r.allUsed && !r.valid){
@@ -3101,6 +3240,7 @@ const db = getFirestore(firebaseApp);
         }
       },120);
     }
+    updateMapPublishButton();
     lastReadyState=r.ready;
   }
 
@@ -3203,7 +3343,15 @@ const db = getFirestore(firebaseApp);
     else copyShare();
   }
   async function publishLayout(){
+    if(publishInFlight) return;
+
     const readiness=buildReadiness();
+
+    if(currentLayoutAlreadyPublished()){
+      toast('Dieses Layout ist bereits veröffentlicht');
+      updateMapPublishButton();
+      return;
+    }
 
     if(!readiness.allUsed){
       toast(`Noch ${readiness.total-readiness.placed} Item${readiness.total-readiness.placed===1?'':'s'} fehlen`);
@@ -3221,6 +3369,9 @@ const db = getFirestore(firebaseApp);
     const review=layoutAutoReview(cloneItems());
     showAutoReview(review);
     celebrateRating(review.score);
+
+    publishInFlight=true;
+    updateMapPublishButton();
 
     try{
       await addDoc(collection(db,'layouts'),{
@@ -3241,10 +3392,14 @@ const db = getFirestore(firebaseApp);
       saveStatusEl.textContent=`🏁 Im Voting · DESIGN CHECK ${review.score}/100 · Ranking nur nach Likes`;
       toast('Layout veröffentlicht');
       await refreshCommunity(false);
+      publishInFlight=false;
+      updateMapPublishButton();
     }catch(err){
       console.error('Publish failed',err);
       saveStatusEl.textContent='⚠ Veröffentlichung fehlgeschlagen';
       toast('Veröffentlichen fehlgeschlagen – Firestore-Regeln prüfen');
+      publishInFlight=false;
+      updateMapPublishButton();
     }
   }
 
@@ -3831,6 +3986,7 @@ const db = getFirestore(firebaseApp);
   document.getElementById('shareLayoutBtn').onclick=openShare;
   document.getElementById('autoRateBtn').onclick=autoRateCurrent;
   document.getElementById('publishLayoutBtn').onclick=publishLayout;
+  document.getElementById('mapPublishBtn').onclick=publishLayout;
   document.getElementById('loadSavedBtn').onclick=loadSavedLayout;
   document.getElementById('deleteSavedBtn').onclick=deleteSavedLayout;
   document.getElementById('closeShareBtn').onclick=()=>document.getElementById('shareModal').classList.remove('open');
@@ -3850,6 +4006,7 @@ const db = getFirestore(firebaseApp);
     if(user){
       firebaseUser=user;
       setCloudStatus('online',true);
+      updateMapPublishButton();
       await refreshCommunity(false);
     }else{
       firebaseUser=null;
