@@ -747,6 +747,21 @@
     .onboarding-card{padding:17px;border-radius:20px}
   }
 
+
+  /* --- V31: cheap mobile night lighting --- */
+  @media(max-width:980px){
+    /* screen blending + large Gaussian blurs were the main mobile-night GPU cost */
+    #roomLightLayer{
+      mix-blend-mode:normal!important;
+    }
+    #ambientLightLayer{
+      will-change:auto!important;
+    }
+    #furnitureLayer g{
+      will-change:auto!important;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -1145,7 +1160,7 @@
 <section class="game-screen" id="leaderView">
   <div class="arena">
     <div class="arena-head">
-      <div><h2>🏆 Lieblingslayouts</h2><p>Ranking ausschließlich nach Community-Likes. Die automatische Bewertung bleibt davon getrennt.</p></div>
+      <div><h2>🏆 Lieblingslayouts</h2><p>Ranking ausschließlich nach Community-Likes. Die automatische Bewertung bleibt davon getrennt. Spieler erhalten 100 Punkte pro veröffentlichtem Layout.</p></div>
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
@@ -1937,6 +1952,7 @@ const db = getFirestore(firebaseApp);
     }
   ];
 
+  const MOBILE_LIGHT_LITE = window.matchMedia('(max-width:980px)').matches;
   let simulatedHour=13;
   let lightGradientSerial=0;
   let lightPlaybackTimer=null;
@@ -2074,50 +2090,43 @@ const db = getFirestore(firebaseApp);
 
     const broadCx=(item.x + dirX*28).toFixed(1);
     const broadCy=(item.y + dirY*28).toFixed(1);
-    const broadRx=(112 + brightness*10).toFixed(1);
-    const broadRy=(84 + brightness*8).toFixed(1);
-
     const coreCx=(item.x + dirX*40).toFixed(1);
     const coreCy=(item.y + dirY*34).toFixed(1);
-    const coreRx=(74 + brightness*6).toFixed(1);
-    const coreRy=(52 + brightness*5).toFixed(1);
 
-    const hotCx=(item.x + dirX*22).toFixed(1);
-    const hotCy=(item.y + dirY*20).toFixed(1);
+    const softFilter=MOBILE_LIGHT_LITE ? '' : ' filter="url(#lightBlur)"';
 
     return `
       <defs>
         <radialGradient id="${id}Room" gradientUnits="userSpaceOnUse"
           cx="${item.x}" cy="${item.y}" r="${li.range}">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.16*brightness).toFixed(3)}"/>
-          <stop offset="28%" stop-color="#f6fbff" stop-opacity="${(0.13*brightness).toFixed(3)}"/>
-          <stop offset="72%" stop-color="#d9e8f7" stop-opacity="${(0.045*brightness).toFixed(3)}"/>
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.15*brightness).toFixed(3)}"/>
+          <stop offset="30%" stop-color="#f6fbff" stop-opacity="${(0.12*brightness).toFixed(3)}"/>
+          <stop offset="72%" stop-color="#d9e8f7" stop-opacity="${(0.04*brightness).toFixed(3)}"/>
           <stop offset="100%" stop-color="#d9e8f7" stop-opacity="0"/>
         </radialGradient>
+
         <radialGradient id="${id}Broad" gradientUnits="userSpaceOnUse"
-          cx="${broadCx}" cy="${broadCy}" r="150">
-          <stop offset="0%" stop-color="#fffef9" stop-opacity="${(0.24*brightness).toFixed(3)}"/>
-          <stop offset="36%" stop-color="#fff6df" stop-opacity="${(0.15*brightness).toFixed(3)}"/>
+          cx="${broadCx}" cy="${broadCy}" r="148">
+          <stop offset="0%" stop-color="#fffefa" stop-opacity="${(0.25*brightness).toFixed(3)}"/>
+          <stop offset="38%" stop-color="#fff5dc" stop-opacity="${(0.15*brightness).toFixed(3)}"/>
           <stop offset="100%" stop-color="#ffe9bc" stop-opacity="0"/>
         </radialGradient>
+
         <radialGradient id="${id}Core" gradientUnits="userSpaceOnUse"
-          cx="${coreCx}" cy="${coreCy}" r="100">
-          <stop offset="0%" stop-color="#fffdf8" stop-opacity="${(0.34*brightness).toFixed(3)}"/>
-          <stop offset="32%" stop-color="#fff2cb" stop-opacity="${(0.24*brightness).toFixed(3)}"/>
+          cx="${coreCx}" cy="${coreCy}" r="92">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.30*brightness).toFixed(3)}"/>
+          <stop offset="40%" stop-color="#fff2cc" stop-opacity="${(0.18*brightness).toFixed(3)}"/>
           <stop offset="100%" stop-color="#ffe6b2" stop-opacity="0"/>
         </radialGradient>
-        <radialGradient id="${id}Hot" gradientUnits="userSpaceOnUse"
-          cx="${hotCx}" cy="${hotCy}" r="46">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="${(0.22*brightness).toFixed(3)}"/>
-          <stop offset="55%" stop-color="#fff7df" stop-opacity="${(0.09*brightness).toFixed(3)}"/>
-          <stop offset="100%" stop-color="#fff7df" stop-opacity="0"/>
-        </radialGradient>
       </defs>
-      <polygon points="${pointsAttr(poly)}" fill="url(#${id}Room)" filter="url(#lightBlur)"/>
-      <ellipse cx="${broadCx}" cy="${broadCy}" rx="${broadRx}" ry="${broadRy}" transform="rotate(${angle} ${broadCx} ${broadCy})" fill="url(#${id}Broad)" filter="url(#lightBlur)"/>
-      <ellipse cx="${coreCx}" cy="${coreCy}" rx="${coreRx}" ry="${coreRy}" transform="rotate(${angle} ${coreCx} ${coreCy})" fill="url(#${id}Core)" filter="url(#lightBlur)"/>
-      <ellipse cx="${hotCx}" cy="${hotCy}" rx="40" ry="28" transform="rotate(${angle} ${hotCx} ${hotCy})" fill="url(#${id}Hot)" filter="url(#lightBlur)"/>
-      <circle cx="${item.x}" cy="${item.y}" r="8" fill="#ffffff" opacity="${(0.10*brightness).toFixed(3)}"/>
+
+      <polygon points="${pointsAttr(poly)}" fill="url(#${id}Room)"${softFilter}/>
+      <ellipse cx="${broadCx}" cy="${broadCy}" rx="116" ry="88"
+        transform="rotate(${angle} ${broadCx} ${broadCy})"
+        fill="url(#${id}Broad)"${softFilter}/>
+      <ellipse cx="${coreCx}" cy="${coreCy}" rx="72" ry="50"
+        transform="rotate(${angle} ${coreCx} ${coreCy})"
+        fill="url(#${id}Core)"${softFilter}/>
     `;
   }
 
@@ -2314,15 +2323,26 @@ const db = getFirestore(firebaseApp);
     for(const item of items){
       const g=furnitureLayer.querySelector(`g[data-id="${item.id}"]`);
       if(!g) continue;
+
       const model=computeItemLightModel(item, lampInfos, sunGeoms, daylight, sunAz);
-      const dx=(model.dominant.dx*model.shadowOffset).toFixed(2);
-      const dy=(model.dominant.dy*model.shadowOffset).toFixed(2);
-      const localBrightness = Math.max(.80, model.brightness);
-      g.style.filter=
-        `brightness(${localBrightness.toFixed(3)}) `+
-        `contrast(1.05) `+
-        `saturate(${(0.99 + (localBrightness-0.82)*0.22).toFixed(3)}) `+
-        `drop-shadow(${dx}px ${dy}px ${model.shadowBlur.toFixed(2)}px rgba(15,23,42,${model.shadowAlpha.toFixed(3)}))`;
+      const localBrightness=Math.max(.80,model.brightness);
+
+      if(MOBILE_LIGHT_LITE){
+        // Biggest mobile optimization: no per-furniture drop-shadow filter at night.
+        // Brightness still reacts to daylight / lamp light.
+        g.style.filter=
+          `brightness(${localBrightness.toFixed(3)}) `+
+          `saturate(${(1.00+(localBrightness-.82)*.16).toFixed(3)})`;
+      }else{
+        const dx=(model.dominant.dx*model.shadowOffset).toFixed(2);
+        const dy=(model.dominant.dy*model.shadowOffset).toFixed(2);
+        g.style.filter=
+          `brightness(${localBrightness.toFixed(3)}) `+
+          `contrast(1.05) `+
+          `saturate(${(1.00+(localBrightness-.82)*.24).toFixed(3)}) `+
+          `drop-shadow(${dx}px ${dy}px ${model.shadowBlur.toFixed(2)}px rgba(15,23,42,${model.shadowAlpha.toFixed(3)}))`;
+      }
+
       g.style.opacity='1';
     }
   }
@@ -2490,6 +2510,35 @@ const db = getFirestore(firebaseApp);
   let firebaseReady=false;
   let communityCache=[];
   let votedLayoutIds=new Set();
+  let playerPointsByUid=new Map();
+
+  const POINTS_PER_PUBLISHED_LAYOUT=100;
+
+  function shortFirebaseId(ownerId){
+    const id=String(ownerId||'');
+    if(!id) return '------';
+    return id.slice(0,6).toUpperCase();
+  }
+
+  function pointsForOwner(ownerId){
+    return playerPointsByUid.get(String(ownerId||''))||0;
+  }
+
+  function rebuildPlayerPoints(){
+    const counts=new Map();
+
+    for(const layout of communityCache){
+      if(!layout.ownerId) continue;
+      counts.set(layout.ownerId,(counts.get(layout.ownerId)||0)+1);
+    }
+
+    playerPointsByUid=new Map(
+      [...counts.entries()].map(([ownerId,count])=>[
+        ownerId,
+        count*POINTS_PER_PUBLISHED_LAYOUT
+      ])
+    );
+  }
 
   function uid(){
     return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2);
@@ -2562,6 +2611,7 @@ const db = getFirestore(firebaseApp);
       });
 
       votedLayoutIds=mine;
+      rebuildPlayerPoints();
       firebaseReady=true;
       setCloudStatus('online',true);
 
@@ -3439,7 +3489,11 @@ const db = getFirestore(firebaseApp);
     ranked.forEach((entry,idx)=>{
       const card=document.createElement('article');
       card.className='leader-card leader-card-click';
-      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div class="leader-preview-hit" style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div><button class="leader-open-btn">🔍 Größer ansehen</button></div>`;
+
+      const firebaseId=shortFirebaseId(entry.ownerId);
+      const playerPoints=pointsForOwner(entry.ownerId);
+
+      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div class="leader-preview-hit" style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}<br>🆔 ${firebaseId} · ⭐ ${playerPoints} Punkte${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div><button class="leader-open-btn">🔍 Größer ansehen</button></div>`;
       renderStaticPreview(card.querySelector('svg'),entry.items);
       card.addEventListener('click',e=>{
         if(e.target.tagName==='BUTTON' || e.target.closest('.leader-open-btn')){
