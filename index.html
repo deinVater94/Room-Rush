@@ -762,6 +762,73 @@
     }
   }
 
+
+  /* --- V32: Top 50 + changeable voting --- */
+  .leader-rest-wrap{
+    margin-top:18px;padding-top:16px;border-top:1px solid #e2e8f0
+  }
+  .leader-rest-head{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px
+  }
+  .leader-rest-head h3{margin:0;font-size:15px}
+  .leader-rest-head span{font-size:11px;color:#64748b}
+
+  .leader-rest-grid{
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px
+  }
+  .leader-mini{
+    position:relative;background:#fff;border:1px solid #dce3ee;border-radius:14px;
+    overflow:hidden;box-shadow:0 6px 16px rgba(15,23,42,.06)
+  }
+  .leader-mini-preview{
+    position:relative;cursor:zoom-in;background:#f8fafc;padding:7px
+  }
+  .leader-mini-preview svg{
+    width:100%;height:auto;display:block;border-radius:9px
+  }
+  .leader-mini-rank{
+    position:absolute;left:7px;top:7px;z-index:3;
+    min-width:30px;height:26px;padding:0 7px;border-radius:8px;
+    display:grid;place-items:center;background:#111827;color:#fff;
+    font-size:11px;font-weight:950
+  }
+  .leader-mini-info{padding:8px 9px 9px}
+  .leader-mini-title{
+    font-size:11px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .leader-mini-meta{margin-top:3px;font-size:9px;line-height:1.35;color:#64748b}
+
+  .vote-edit{
+    display:flex;gap:6px;margin-top:9px
+  }
+  .vote-edit button{
+    flex:1;padding:7px 6px;border-radius:9px;font-size:10px;font-weight:900
+  }
+  .vote-edit .vote-pass.active{
+    color:#b91c1c;background:#fef2f2;border-color:#fecaca
+  }
+  .vote-edit .vote-like.active{
+    color:#15803d;background:#f0fdf4;border-color:#bbf7d0
+  }
+  .vote-edit .vote-own{
+    width:100%;color:#64748b;background:#f8fafc;border-color:#e2e8f0
+  }
+  .vote-state{
+    margin-top:5px;font-size:9px;color:#64748b;text-align:center
+  }
+
+  .leader-card .vote-edit{margin-top:10px}
+  .leader-card .vote-edit button{font-size:11px;padding:8px}
+
+  @media(max-width:980px){
+    .leader-rest-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  }
+  @media(max-width:420px){
+    .leader-rest-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .leader-mini-info{padding:7px}
+    .leader-mini-meta{font-size:8.5px}
+  }
+
 </style>
 </head>
 <body>
@@ -1164,7 +1231,16 @@
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
-    <div class="policy-card">🧹 <strong>Top-50-Regel:</strong> Die Rangliste kann auf die besten 50 begrenzt werden. In dieser ersten Firebase-Version werden schlechter platzierte Layouts noch nicht automatisch aus der Datenbank gelöscht – so vermeiden wir unbeabsichtigten Datenverlust. Das automatische Aufräumen können wir danach separat ergänzen.</div>
+
+    <div class="leader-rest-wrap" id="leaderRestWrap">
+      <div class="leader-rest-head">
+        <h3>Plätze 4–50</h3>
+        <span>kleinere Vorschau · antippen zum Vergrößern</span>
+      </div>
+      <div class="leader-rest-grid" id="leaderRest"></div>
+    </div>
+
+    <div class="policy-card">🗳️ <strong>Voting:</strong> Deine Stimme ist nicht mehr endgültig. In der Top-Liste kannst du jederzeit zwischen <strong>Like</strong> und <strong>Weiter</strong> wechseln. Ranking bleibt ausschließlich nach Likes.</div>
   </div>
 </section>
 
@@ -2510,6 +2586,7 @@ const db = getFirestore(firebaseApp);
   let firebaseReady=false;
   let communityCache=[];
   let votedLayoutIds=new Set();
+  let myVotesByLayoutId=new Map();
   let playerPointsByUid=new Map();
 
   const POINTS_PER_PUBLISHED_LAYOUT=100;
@@ -2582,10 +2659,16 @@ const db = getFirestore(firebaseApp);
 
       const voteCounts=new Map();
       const mine=new Set();
+      const myVotes=new Map();
 
       voteSnap.forEach(snap=>{
         const v=snap.data()||{};
-        if(v.userId===firebaseUser.uid && v.layoutId) mine.add(v.layoutId);
+
+        if(v.userId===firebaseUser.uid && v.layoutId){
+          mine.add(v.layoutId);
+          myVotes.set(v.layoutId,Number(v.value)===1?1:0);
+        }
+
         if(v.value===1 && v.layoutId){
           voteCounts.set(v.layoutId,(voteCounts.get(v.layoutId)||0)+1);
         }
@@ -2611,6 +2694,7 @@ const db = getFirestore(firebaseApp);
       });
 
       votedLayoutIds=mine;
+      myVotesByLayoutId=myVotes;
       rebuildPlayerPoints();
       firebaseReady=true;
       setCloudStatus('online',true);
@@ -3227,42 +3311,72 @@ const db = getFirestore(firebaseApp);
     };
     card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);
   }
-  async function voteSwipe(like){
-    if(!activeSwipe || !firebaseUser || !firebaseReady)return;
+  async function saveVote(layoutId,value,{animateSwipe=false}={}){
+    if(!firebaseUser || !firebaseReady || !layoutId) return false;
 
-    const voting=activeSwipe;
-    const card=document.getElementById('swipeCard');
-    if(card)card.classList.add(like?'swipe-right':'swipe-left');
+    const layout=communityCache.find(x=>x.id===layoutId);
+    if(!layout) return false;
 
-    // Optimistic UI: immediately mark as voted locally.
-    votedLayoutIds.add(voting.id);
-    if(like){
-      const cached=communityCache.find(x=>x.id===voting.id);
-      if(cached) cached.score=(cached.score||0)+1;
+    if(layout.ownerId===firebaseUser.uid){
+      toast('Das ist dein eigenes Layout');
+      return false;
     }
 
-    swipeQueue.shift();
+    const nextValue=Number(value)===1?1:0;
+    const hadVote=myVotesByLayoutId.has(layoutId);
+    const previousValue=hadVote ? myVotesByLayoutId.get(layoutId) : null;
+
+    if(hadVote && previousValue===nextValue){
+      toast(nextValue===1?'♥ Like ist bereits aktiv':'Weiter ist bereits aktiv');
+      return true;
+    }
+
+    // Optimistic ranking update.
+    if(previousValue===1 && nextValue===0){
+      layout.score=Math.max(0,(layout.score||0)-1);
+    }else if(previousValue!==1 && nextValue===1){
+      layout.score=(layout.score||0)+1;
+    }
+
+    votedLayoutIds.add(layoutId);
+    myVotesByLayoutId.set(layoutId,nextValue);
+
     updateHUD();
     renderLeaderboard();
-
-    setTimeout(renderSwipeCard,180);
+    resetSwipeQueue();
 
     try{
-      // Deterministic document id => one vote per anonymous Firebase user and layout.
-      const voteId=`${firebaseUser.uid}_${voting.id}`;
+      const voteId=`${firebaseUser.uid}_${layoutId}`;
+
+      // Same deterministic document is overwritten when the user changes their vote.
       await setDoc(doc(db,'votes',voteId),{
         userId:firebaseUser.uid,
-        layoutId:voting.id,
-        value:like?1:0,
+        layoutId,
+        value:nextValue,
         createdAt:serverTimestamp()
       });
 
-      toast(like?'♥ Stimme vergeben':'Weiter');
+      toast(nextValue===1?'♥ Stimme = Like':'Stimme = Weiter');
+      return true;
     }catch(err){
-      console.error('Vote failed',err);
-      toast('Vote konnte nicht gespeichert werden');
+      console.error('Vote save/change failed',err);
+      toast('Stimme konnte nicht gespeichert werden');
       await refreshCommunity(false);
+      return false;
     }
+  }
+
+  async function voteSwipe(like){
+    if(!activeSwipe || !firebaseUser || !firebaseReady) return;
+
+    const voting=activeSwipe;
+    const card=document.getElementById('swipeCard');
+    if(card) card.classList.add(like?'swipe-right':'swipe-left');
+
+    swipeQueue.shift();
+    setTimeout(renderSwipeCard,180);
+
+    await saveVote(voting.id,like?1:0,{animateSwipe:true});
   }
 
 
@@ -3477,35 +3591,131 @@ const db = getFirestore(firebaseApp);
     });
   }
 
+
+  function voteControlsHTML(entry){
+    if(!firebaseUser) return '';
+
+    if(entry.ownerId===firebaseUser.uid){
+      return `<div class="vote-edit"><button class="vote-own" disabled>Dein Layout</button></div>`;
+    }
+
+    const current=myVotesByLayoutId.has(entry.id)
+      ? myVotesByLayoutId.get(entry.id)
+      : null;
+
+    return `
+      <div class="vote-edit" data-vote-layout="${entry.id}">
+        <button class="vote-pass ${current===0?'active':''}" data-vote-value="0">✕ Weiter</button>
+        <button class="vote-like ${current===1?'active':''}" data-vote-value="1">♥ Like</button>
+      </div>
+      <div class="vote-state">${current===1?'Deine Stimme: Like':current===0?'Deine Stimme: Weiter':'Noch nicht bewertet'}</div>
+    `;
+  }
+
+  function bindVoteControls(root,entry){
+    root.querySelectorAll('[data-vote-value]').forEach(btn=>{
+      btn.addEventListener('click',async e=>{
+        e.stopPropagation();
+        const value=Number(btn.dataset.voteValue)===1?1:0;
+        await saveVote(entry.id,value);
+      });
+    });
+  }
+
   function renderLeaderboard(){
     const box=document.getElementById('leaderboard');
-    if(!box) return;
+    const restBox=document.getElementById('leaderRest');
+    const restWrap=document.getElementById('leaderRestWrap');
+
+    if(!box || !restBox) return;
+
     if(!communityCache.length){
       box.innerHTML='<div class="empty-deck" style="grid-column:1/-1"><div class="emoji">📦</div><strong>Noch keine Layouts</strong><div style="margin-top:6px">Veröffentliche das erste Community-Layout.</div></div>';
+      restBox.innerHTML='';
+      if(restWrap) restWrap.style.display='none';
       return;
     }
-    const ranked=[...communityCache].sort((a,b)=>(b.score||0)-(a.score||0)||(b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+
+    const ranked=[...communityCache]
+      .sort((a,b)=>(b.score||0)-(a.score||0)||(b.createdAt||0)-(a.createdAt||0))
+      .slice(0,50);
+
+    const top3=ranked.slice(0,3);
+    const rest=ranked.slice(3,50);
+
     box.innerHTML='';
-    ranked.forEach((entry,idx)=>{
+
+    top3.forEach((entry,idx)=>{
       const card=document.createElement('article');
       card.className='leader-card leader-card-click';
 
       const firebaseId=shortFirebaseId(entry.ownerId);
       const playerPoints=pointsForOwner(entry.ownerId);
 
-      card.innerHTML=`<div class="leader-rank">#${idx+1}</div><div class="leader-preview-hit" style="padding:10px"><svg class="preview-svg"></svg></div><div class="leader-info"><div class="leader-name">${escapeHTML(entry.title)}</div><div class="leader-score">♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}<br>🆔 ${firebaseId} · ⭐ ${playerPoints} Punkte${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}</div><button class="leader-open-btn">🔍 Größer ansehen</button></div>`;
+      card.innerHTML=`
+        <div class="leader-rank">#${idx+1}</div>
+        <div class="leader-preview-hit" style="padding:10px"><svg class="preview-svg"></svg></div>
+        <div class="leader-info">
+          <div class="leader-name">${escapeHTML(entry.title)}</div>
+          <div class="leader-score">
+            ♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}
+            <br>🆔 ${firebaseId} · ⭐ ${playerPoints} Punkte
+            ${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}
+          </div>
+          ${voteControlsHTML(entry)}
+          <button class="leader-open-btn">🔍 Größer ansehen</button>
+        </div>`;
+
       renderStaticPreview(card.querySelector('svg'),entry.items);
-      card.addEventListener('click',e=>{
-        if(e.target.tagName==='BUTTON' || e.target.closest('.leader-open-btn')){
-          e.stopPropagation();
-        }
+
+      card.querySelector('.leader-preview-hit').addEventListener('click',e=>{
+        e.stopPropagation();
         openFullscreenLayoutViewer(entry);
       });
+
       card.querySelector('.leader-open-btn').addEventListener('click',e=>{
         e.stopPropagation();
         openFullscreenLayoutViewer(entry);
       });
+
+      bindVoteControls(card,entry);
       box.appendChild(card);
+    });
+
+    restBox.innerHTML='';
+
+    if(restWrap) restWrap.style.display=rest.length?'':'none';
+
+    rest.forEach((entry,index)=>{
+      const rank=index+4;
+      const card=document.createElement('article');
+      card.className='leader-mini';
+
+      const firebaseId=shortFirebaseId(entry.ownerId);
+      const playerPoints=pointsForOwner(entry.ownerId);
+
+      card.innerHTML=`
+        <div class="leader-mini-preview">
+          <div class="leader-mini-rank">#${rank}</div>
+          <svg class="preview-svg"></svg>
+        </div>
+        <div class="leader-mini-info">
+          <div class="leader-mini-title">${escapeHTML(entry.title)}</div>
+          <div class="leader-mini-meta">
+            ♥ ${entry.score||0} · ${escapeHTML(entry.author||'Gast')}
+            <br>🆔 ${firebaseId} · ⭐ ${playerPoints}
+          </div>
+          ${voteControlsHTML(entry)}
+        </div>`;
+
+      renderStaticPreview(card.querySelector('svg'),entry.items);
+
+      card.querySelector('.leader-mini-preview').addEventListener('click',()=>{
+        openFullscreenLayoutViewer(entry);
+      });
+
+      bindVoteControls(card,entry);
+      restBox.appendChild(card);
     });
   }
 
