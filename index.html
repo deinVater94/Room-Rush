@@ -978,7 +978,7 @@
       <div class="light-popover-head">
         <div>
           <strong>☀ 24h Lichtsimulation</strong>
-          <span>läuft automatisch · 24h in 60s</span>
+          <span>läuft automatisch · 24 feste Lichtstufen · 60s pro Tag</span>
         </div>
         <button class="light-close" id="lightCloseBtn" type="button" aria-label="Licht schließen">✕</button>
       </div>
@@ -990,7 +990,7 @@
         <div>Aktive Fenster</div><div class="value" id="lightWindowHitLabel">—</div>
       </div>
 
-      <input id="lightTimeSlider" type="range" min="0" max="24" step="0.25" value="13">
+      <input id="lightTimeSlider" type="range" min="0" max="23" step="1" value="13">
 
       <div class="row">
         <button id="lightMorningBtn">🌅 07</button>
@@ -1004,7 +1004,7 @@
         <button id="lightPauseBtn">⏸ Pause</button>
       </div>
 
-      <div class="small" id="lightPlaybackStatus">24h-Loop startet automatisch</div>
+      <div class="small" id="lightPlaybackStatus">24 Lichtstufen · je 2,5 Sekunden</div>
 
       <label class="row" style="justify-content:flex-start">
         <input id="autoRoomLights" type="checkbox" checked>
@@ -1944,7 +1944,8 @@ const db = getFirestore(firebaseApp);
   let lightPlaybackStartMs=0;
   let lightPlaybackStartHour=0;
   const LIGHT_PLAYBACK_DURATION_MS = 60000;
-  const LIGHT_RENDER_INTERVAL_MS = window.matchMedia('(max-width:980px)').matches ? 125 : 75;
+  const LIGHT_STAGE_COUNT = 24;
+  const LIGHT_STAGE_DURATION_MS = LIGHT_PLAYBACK_DURATION_MS / LIGHT_STAGE_COUNT;
 
   function daylightAmount(hour){
     if(hour<6 || hour>20) return 0;
@@ -2387,7 +2388,8 @@ const db = getFirestore(firebaseApp);
   }
 
   function setSimulatedHour(hour){
-    simulatedHour=((Number(hour)%24)+24)%24;
+    const raw=((Number(hour)%24)+24)%24;
+    simulatedHour=Math.floor(raw)%24;
     const slider=document.getElementById('lightTimeSlider');
     if(slider) slider.value=String(simulatedHour);
     renderLighting();
@@ -2407,34 +2409,46 @@ const db = getFirestore(firebaseApp);
       clearTimeout(lightPlaybackTimer);
       lightPlaybackTimer=null;
     }
-    if(resetStatus) updateLightPlaybackStatus('Animation pausiert', false);
+    if(resetStatus) updateLightPlaybackStatus('24h-Loop pausiert', false);
   }
 
   function startLightPlayback(durationMs=LIGHT_PLAYBACK_DURATION_MS,startHour=0){
     stopLightPlayback(false);
     lightPlaybackRunning=true;
     lightPlaybackStartMs=performance.now();
-    lightPlaybackStartHour=Number(startHour)||0;
-    updateLightPlaybackStatus('↻ 24h-Loop läuft · 60s pro Tag', true);
+    lightPlaybackStartHour=Math.floor(Number(startHour)||0)%24;
+    updateLightPlaybackStatus('↻ 24 Lichtstufen · 2,5s pro Stunde', true);
+
+    let lastStage=-1;
 
     const tick=()=>{
       if(!lightPlaybackRunning) return;
 
-      const now=performance.now();
-      const progress=((now-lightPlaybackStartMs)%durationMs)/durationMs;
-      simulatedHour=((lightPlaybackStartHour+progress*24)%24+24)%24;
+      const elapsed=performance.now()-lightPlaybackStartMs;
+      const cycleProgress=(elapsed%durationMs)/durationMs;
+      const stage=Math.floor(cycleProgress*LIGHT_STAGE_COUNT)%LIGHT_STAGE_COUNT;
 
-      const slider=document.getElementById('lightTimeSlider');
-      if(slider) slider.value=String(simulatedHour);
+      if(stage!==lastStage){
+        lastStage=stage;
+        simulatedHour=(lightPlaybackStartHour+stage)%24;
 
-      if(!document.hidden && document.body.dataset.view==='layout'){
-        renderLighting();
+        const slider=document.getElementById('lightTimeSlider');
+        if(slider) slider.value=String(simulatedHour);
+
+        const time=document.getElementById('lightTimeLabel');
+        const fabTime=document.getElementById('lightFabTime');
+        if(time) time.textContent=formatHour(simulatedHour);
+        if(fabTime) fabTime.textContent=formatHour(simulatedHour);
+
+        if(!document.hidden && document.body.dataset.view==='layout'){
+          renderLighting();
+        }
       }
 
-      lightPlaybackTimer=setTimeout(
-        tick,
-        document.hidden ? 500 : LIGHT_RENDER_INTERVAL_MS
-      );
+      const nextBoundary=(stage+1)*LIGHT_STAGE_DURATION_MS;
+      const elapsedInCycle=elapsed%durationMs;
+      const wait=Math.max(80,nextBoundary-elapsedInCycle+8);
+      lightPlaybackTimer=setTimeout(tick,wait);
     };
 
     tick();
