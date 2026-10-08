@@ -886,6 +886,44 @@
     }
   }
 
+
+  /* --- V39: required vs optional catalog items --- */
+  .catalog-section-title{
+    grid-column:1/-1;
+    font-size:10px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#64748b;
+    margin:4px 2px 0;
+  }
+  .catalog-item.required-missing{
+    background:#fff1f2;
+    border-color:#fecdd3;
+  }
+  .catalog-item.required-done{
+    background:#f0fdf4;
+    border-color:#bbf7d0;
+  }
+  .catalog-item.optional-item{
+    background:#fff;
+    border-color:#e5e7eb;
+  }
+  .catalog-status{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    margin-left:5px;
+    padding:2px 5px;
+    border-radius:999px;
+    font-size:8px;
+    font-weight:950;
+    vertical-align:1px;
+  }
+  .catalog-status.must-missing{background:#ffe4e6;color:#be123c}
+  .catalog-status.must-done{background:#dcfce7;color:#15803d}
+  .catalog-status.optional{background:#f1f5f9;color:#475569}
+
 </style>
 </head>
 <body>
@@ -895,7 +933,7 @@
     <div><strong>WOHNZIMMERTINDER</strong><span>layout swipe game</span></div>
   </div>
   <div class="hud">
-    <div class="hud-chip">🧩 Placed <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
+    <div class="hud-chip">🧩 Pflicht <b id="hudPlaced">0</b>/<b id="hudTotal">0</b></div>
     <div class="hud-chip">⚡ Layout <b id="hudValidity">bereit</b></div>
     <div class="hud-chip">🔥 Layouts <b id="hudCommunity">0</b></div>
     <div class="hud-chip">☁️ Firebase <b id="hudCloud">verbinde…</b></div>
@@ -1372,7 +1410,13 @@ const db = getFirestore(firebaseApp);
     lsofa: {name:'L-Couch', gameClass:'XL', role:'Lounge', count:1, w:217, d:80, h:60, kind:'lshape', asset:'assets/l_couch.png', assetBox:{w:217,d:145,dx:0,dy:32.5}},
     sofabed: {name:'Ausklappcouch', gameClass:'XL', role:'Lounge', count:1, w:190, d:120, h:80, kind:'sofabed', asset:'assets/sofabed_closed.png', assetOpen:'assets/sofabed_open.png', assetBox:{w:190,d:120,dx:0,dy:0}, assetBoxOpen:{w:190,d:185,dx:0,dy:32.5}},
     rolltable: {name:'Rolltisch', gameClass:'S', role:'Ablage', count:1, w:40, d:40, h:35, kind:'rect', asset:'assets/roll_table.png'},
-    jibomat: {name:'Jibomat', gameClass:'S', role:'Utility', count:1, w:30, d:21, h:45, kind:'rect', asset:'assets/jibomat.png', canGoUnderTable:true}
+
+    // Optional decoration / utility props
+    jibomat: {name:'Jibomat', gameClass:'S', role:'Optional', count:1, w:30, d:21, h:45, kind:'rect', asset:'assets/jibomat.png', canGoUnderTable:true, optional:true},
+    pcsetup: {name:'PC-Setup', gameClass:'M', role:'Optional · Tischdeko', count:1, w:70, d:30, h:45, kind:'rect', asset:'assets/pc_setup.svg', canSitOnTable:true, optional:true},
+    plant: {name:'Pflanze', gameClass:'S', role:'Optional · Deko', count:2, w:30, d:30, h:80, kind:'circle', asset:'assets/plant.svg', canSitOnTable:true, optional:true},
+    tablelamp: {name:'Tischlampe', gameClass:'S', role:'Optional · Deko', count:1, w:20, d:20, h:30, kind:'circle', asset:'assets/table_lamp.svg', canSitOnTable:true, optional:true},
+    ledstrip: {name:'LED-Stripe 2m', gameClass:'L', role:'Optional · Deko', count:1, w:200, d:5, h:null, kind:'rect', asset:'assets/led_strip.svg', canOverlapFurniture:true, optional:true}
   };
 
   const fixedObstacles = [
@@ -1620,8 +1664,21 @@ const db = getFirestore(firebaseApp);
     return itemFitsFullyInside(prop,table);
   }
 
+  function canSitOnTable(prop,table){
+    const pDef=defs[prop.type], tDef=defs[table.type];
+    if(!pDef?.canSitOnTable || !tDef?.isTable) return false;
+    return itemFitsFullyInside(prop,table);
+  }
+
   function itemOverlapAllowed(a,b){
-    return canNestUnderTable(a,b) || canNestUnderTable(b,a);
+    const aDef=defs[a.type], bDef=defs[b.type];
+
+    if(aDef?.canOverlapFurniture || bDef?.canOverlapFurniture) return true;
+
+    return canNestUnderTable(a,b)
+      || canNestUnderTable(b,a)
+      || canSitOnTable(a,b)
+      || canSitOnTable(b,a);
   }
 
   function statusFor(item){
@@ -1683,24 +1740,58 @@ const db = getFirestore(firebaseApp);
 
   function renderCatalog(){
     catalogEl.innerHTML='';
-    Object.entries(defs).forEach(([key,def])=>{
-      const used=items.filter(i=>i.type===key).length;
-      const left=def.count-used;
-      const el=document.createElement('div');
-      el.className='catalog-item';
-      const info=document.createElement('div');
-      info.innerHTML=`<div class="catalog-title">${def.name}</div>
-        <div class="catalog-sub">CLASS ${def.gameClass} · ${def.role}</div>`;
-      const act=document.createElement('div');
-      const btn=document.createElement('button');
-      btn.textContent=left>0?'＋ ADD':'USED';
-      btn.disabled=left<=0;
-      btn.onclick=()=>spawn(key);
-      act.innerHTML=`<span class="count">${left}/${def.count}</span>`;
-      act.appendChild(btn);
-      el.append(info,act);
-      catalogEl.appendChild(el);
-    });
+
+    const entries=Object.entries(defs);
+    const required=entries.filter(([,def])=>!def.optional);
+    const optional=entries.filter(([,def])=>!!def.optional);
+
+    function addSection(title,sectionEntries){
+      const heading=document.createElement('div');
+      heading.className='catalog-section-title';
+      heading.textContent=title;
+      catalogEl.appendChild(heading);
+
+      sectionEntries.forEach(([key,def])=>{
+        const used=items.filter(i=>i.type===key).length;
+        const left=def.count-used;
+        const done=used>=def.count;
+
+        const el=document.createElement('div');
+        el.className='catalog-item';
+
+        if(def.optional){
+          el.classList.add('optional-item');
+        }else{
+          el.classList.add(done?'required-done':'required-missing');
+        }
+
+        const info=document.createElement('div');
+
+        const badge=def.optional
+          ? `<span class="catalog-status optional">OPTIONAL</span>`
+          : done
+            ? `<span class="catalog-status must-done">✓ PFLICHT</span>`
+            : `<span class="catalog-status must-missing">● PFLICHT</span>`;
+
+        info.innerHTML=`<div class="catalog-title">${def.name}${badge}</div>
+          <div class="catalog-sub">CLASS ${def.gameClass} · ${def.role}</div>`;
+
+        const act=document.createElement('div');
+        const btn=document.createElement('button');
+        btn.textContent=left>0?'＋ ADD':'USED';
+        btn.disabled=left<=0;
+        btn.onclick=()=>spawn(key);
+
+        act.innerHTML=`<span class="count">${used}/${def.count}</span>`;
+        act.appendChild(btn);
+
+        el.append(info,act);
+        catalogEl.appendChild(el);
+      });
+    }
+
+    addSection('Pflicht für Veröffentlichung',required);
+    addSection('Optionale Deko',optional);
   }
 
   function createItemGroup(item){
@@ -3128,13 +3219,25 @@ const db = getFirestore(firebaseApp);
   function currentIsValid(){ return items.length>0 && items.every(i=>statusFor(i).ok); }
 
   function totalRequiredItems(){
-    return Object.values(defs).reduce((sum,def)=>sum+def.count,0);
+    return Object.values(defs)
+      .filter(def=>!def.optional)
+      .reduce((sum,def)=>sum+def.count,0);
+  }
+
+  function placedRequiredItems(){
+    return Object.entries(defs)
+      .filter(([,def])=>!def.optional)
+      .reduce((sum,[type,def])=>
+        sum+Math.min(def.count,items.filter(item=>item.type===type).length)
+      ,0);
   }
 
   function allRequiredItemsUsed(){
-    return Object.entries(defs).every(([type,def])=>
-      items.filter(item=>item.type===type).length===def.count
-    );
+    return Object.entries(defs)
+      .filter(([,def])=>!def.optional)
+      .every(([type,def])=>
+        items.filter(item=>item.type===type).length===def.count
+      );
   }
 
 
@@ -3171,7 +3274,7 @@ const db = getFirestore(firebaseApp);
 
   function buildReadiness(){
     const total=totalRequiredItems();
-    const placed=items.length;
+    const placed=placedRequiredItems();
     const allUsed=allRequiredItemsUsed();
     const valid=currentIsValid();
     return {
@@ -3214,7 +3317,7 @@ const db = getFirestore(firebaseApp);
       if(r.allUsed && !r.valid){
         btn.textContent='⚠ Erst rote Fehler lösen';
       }else{
-        btn.textContent=`🔒 ${r.placed}/${r.total} Möbel`;
+        btn.textContent=`🔒 ${r.placed}/${r.total} Pflicht`;
       }
       return;
     }
@@ -3256,7 +3359,7 @@ const db = getFirestore(firebaseApp);
       jump.classList.add('ready');
       icon.textContent='✓';
       title.textContent='READY TO PUBLISH';
-      detail.textContent=`Alle ${r.total} Items gesetzt · Layout ist gültig`;
+      detail.textContent=`Alle ${r.total} Pflicht-Items gesetzt · Layout ist gültig`;
       mini.textContent='READY';
       help.textContent='READY! Tippe direkt auf „Layout veröffentlichen“ in der Karte oder nutze den Button hier.';
       publish.disabled=false;
@@ -3266,7 +3369,7 @@ const db = getFirestore(firebaseApp);
       jump.classList.add('fix');
       icon.textContent='!';
       title.textContent='FIX YOUR LAYOUT';
-      detail.textContent=`Alle ${r.total} Items gesetzt · mindestens ein Move ist ungültig`;
+      detail.textContent=`Alle ${r.total} Pflicht-Items gesetzt · mindestens ein Move ist ungültig`;
       mini.textContent='FIX';
       help.textContent='Löse alle roten Kollisionen bzw. ungültigen Platzierungen, dann wird Publish freigeschaltet.';
       publish.disabled=true;
@@ -3274,11 +3377,11 @@ const db = getFirestore(firebaseApp);
     }else{
       icon.textContent='◌';
       title.textContent='LAYOUT INCOMPLETE';
-      detail.textContent=`${r.placed}/${r.total} Items gesetzt`;
+      detail.textContent=`${r.placed}/${r.total} Pflicht-Items gesetzt`;
       mini.textContent='NOT READY';
-      help.textContent=`Nutze noch ${Math.max(0,r.total-r.placed)} Item${r.total-r.placed===1?'':'s'}, um das Layout freizuschalten.`;
+      help.textContent=`Setze noch ${Math.max(0,r.total-r.placed)} Pflicht-Item${r.total-r.placed===1?'':'s'}, um Publish freizuschalten. Optionale Deko ist freiwillig.`;
       publish.disabled=true;
-      publish.textContent=`🔒 ${r.placed}/${r.total} Items`;
+      publish.textContent=`🔒 ${r.placed}/${r.total} Pflicht`;
     }
 
     if(r.ready && !lastReadyState){
@@ -3404,7 +3507,7 @@ const db = getFirestore(firebaseApp);
     }
 
     if(!readiness.allUsed){
-      toast(`Noch ${readiness.total-readiness.placed} Item${readiness.total-readiness.placed===1?'':'s'} fehlen`);
+      toast(`Noch ${readiness.total-readiness.placed} Pflicht-Item${readiness.total-readiness.placed===1?'':'s'} fehlen`);
       setPanelPane('möbel',true);
       return;
     }
