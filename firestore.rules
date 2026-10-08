@@ -50,7 +50,7 @@ service cloud.firestore {
         && (request.resource.data.value == 0 || request.resource.data.value == 1)
         && request.resource.data.createdAt == request.time
         && (
-          request.resource.data.layoutId.matches('^ai-0(0[1-9]|[1-4][0-9]|50)$')
+          request.resource.data.layoutId.matches('^ai-2-0(0[1-9]|[1-4][0-9]|50)$')
           || exists(/databases/$(database)/documents/layouts/$(request.resource.data.layoutId))
         );
 
@@ -67,7 +67,7 @@ service cloud.firestore {
         && (request.resource.data.value == 0 || request.resource.data.value == 1)
         && request.resource.data.createdAt == request.time
         && (
-          resource.data.layoutId.matches('^ai-0(0[1-9]|[1-4][0-9]|50)$')
+          resource.data.layoutId.matches('^ai-2-0(0[1-9]|[1-4][0-9]|50)$')
           || exists(/databases/$(database)/documents/layouts/$(resource.data.layoutId))
         );
 
