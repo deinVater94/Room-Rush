@@ -1264,7 +1264,7 @@
 <section class="game-screen" id="swipeView">
   <div class="arena swipe-shell">
     <div class="arena-head">
-      <div><h2>🔥 WohnzimmerSwipe</h2><p>Zieh nach links für Weiter oder nach rechts für Like. Der Feed endet nie: Community-Layouts kommen später wieder, sodass du deine Stimme jederzeit ändern kannst.</p></div>
+      <div><h2>🔥 WohnzimmerSwipe</h2><p>Zieh nach links für Weiter oder nach rechts für Like. Noch nicht bewertete Layouts kommen immer zuerst; danach wiederholen sich bereits bewertete Layouts, damit du deine Stimme später ändern kannst.</p></div>
       <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
@@ -3482,9 +3482,18 @@ const db = getFirestore(firebaseApp);
   }
 
   function resetSwipeQueue(){
-    swipeQueue=shuffleLayouts(
-      communityCache.filter(x=>x.ownerId!==firebaseUser?.uid)
+    const available=communityCache.filter(x=>x.ownerId!==firebaseUser?.uid);
+
+    // First show layouts this Firebase user has never rated.
+    // Only after those are exhausted do already-rated layouts reappear.
+    const unrated=shuffleLayouts(
+      available.filter(x=>!myVotesByLayoutId.has(x.id))
     );
+    const rated=shuffleLayouts(
+      available.filter(x=>myVotesByLayoutId.has(x.id))
+    );
+
+    swipeQueue=[...unrated,...rated];
     activeSwipe=null;
     renderSwipeCard();
   }
@@ -3496,11 +3505,18 @@ const db = getFirestore(firebaseApp);
       document.getElementById('swipeActions').style.display='none';return;
     }
     activeSwipe=swipeQueue[0];
+
+    const alreadyRated=myVotesByLayoutId.has(activeSwipe.id);
+    const previousVote=alreadyRated ? myVotesByLayoutId.get(activeSwipe.id) : null;
+    const swipeState=alreadyRated
+      ? (previousVote===1?'Schon bewertet · deine Stimme: ♥ Like':'Schon bewertet · deine Stimme: ✕ Weiter')
+      : '✨ Noch nicht bewertet';
+
     deck.innerHTML=`<div class="swipe-card" id="swipeCard">
       <div class="swipe-stamp stamp-like" id="likeStamp">LIKE</div><div class="swipe-stamp stamp-pass" id="passStamp">PASS</div>
-      <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')}</div></div><div class="score-badge">${approvalText(activeSwipe)}</div></div>
+      <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')} · ${swipeState}</div></div><div class="score-badge">${approvalText(activeSwipe)}</div></div>
       <div class="preview-wrap"><svg class="preview-svg" id="swipePreview"></svg></div>
-      <div class="swipe-footer">${activeSwipe.items.length} Items · ♥ ${activeSwipe.score||0} Likes${Number.isFinite(activeSwipe.autoScore)?` · ✨ Auto ${activeSwipe.autoScore}/100`:''} · Layouts wiederholen sich automatisch</div>
+      <div class="swipe-footer">${activeSwipe.items.length} Items · ♥ ${activeSwipe.score||0} Likes${Number.isFinite(activeSwipe.autoScore)?` · ✨ Auto ${activeSwipe.autoScore}/100`:''} · Neue Layouts zuerst</div>
     </div>`;
     renderStaticPreview(document.getElementById('swipePreview'),activeSwipe.items);
     attachSwipeGesture();
