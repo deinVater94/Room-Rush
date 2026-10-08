@@ -1480,8 +1480,11 @@ const db = getFirestore(firebaseApp);
   function previewItemMarkup(item){
     const def=defs[item.type];
     if(!def) return '';
+
     const asset=itemAsset(def,item);
-    const {w,d}=itemRenderSize(item,def);
+    const box=itemAssetBox(item,def);
+    const w=box.w||def.w, d=box.d||def.d, dx=box.dx||0, dy=box.dy||0;
+
     const outline=worldPolys(item).map(poly=>{
       const pts=poly.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
       return `<polygon points="${pts}" fill="rgba(124,58,237,.07)" stroke="rgba(124,58,237,.30)" stroke-width="1.25" stroke-linejoin="round"/>`;
@@ -1491,11 +1494,11 @@ const db = getFirestore(firebaseApp);
       return outline;
     }
 
-    const mirror = (def.kind==='lshape' && item.mirrored)
-      ? `<image href="${asset}" x="${(-w/2).toFixed(1)}" y="${(-d/2).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none" transform="scale(-1 1)"/>`
-      : `<image href="${asset}" x="${(-w/2).toFixed(1)}" y="${(-d/2).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none"/>`;
+    const imageMarkup = (def.kind==='lshape' && item.mirrored)
+      ? `<image href="${asset}" x="${((-w/2)+dx).toFixed(1)}" y="${((-d/2)+dy).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none" transform="translate(${(-2*dx).toFixed(1)} 0) scale(-1 1)"/>`
+      : `<image href="${asset}" x="${((-w/2)+dx).toFixed(1)}" y="${((-d/2)+dy).toFixed(1)}" width="${w}" height="${d}" preserveAspectRatio="none"/>`;
 
-    return `${outline}<g transform="translate(${item.x} ${item.y}) rotate(${item.r})">${mirror}</g>`;
+    return `${outline}<g transform="translate(${item.x} ${item.y}) rotate(${item.r})">${imageMarkup}</g>`;
   }
 
   let items = [];
