@@ -920,8 +920,8 @@
     </div>
     <div class="quick-actions" id="quickActions">
       <span class="quick-name" id="quickName">Item</span>
-      <button id="quickRotL" title="Links drehen">↺</button>
-      <button id="quickRotR" title="Rechts drehen">↻</button>
+      <button id="quickRotL" title="90° links drehen">↺ 90°</button>
+      <button id="quickRotR" title="90° rechts drehen">↻ 90°</button>
       <button id="quickEdit" class="primary">EDIT</button>
     </div>
     <svg id="plan" viewBox="-70 -70 920 585" aria-label="Interaktiver Grundriss">
@@ -1190,8 +1190,8 @@
             <div>Move</div><div class="value" id="selStatus">—</div>
           </div>
           <div class="row">
-            <button id="rotL" class="primary">↺ Rotate</button>
-            <button id="rotR" class="primary">↻ Rotate</button>
+            <button id="rotL" class="primary">↺ 90°</button>
+            <button id="rotR" class="primary">↻ 90°</button>
             <button id="mirrorBtn" style="display:none">⇄ Mirror L</button>
             <button id="foldBtn" style="display:none">⇲ Deploy</button>
           </div>
@@ -1264,7 +1264,7 @@
 <section class="game-screen" id="swipeView">
   <div class="arena swipe-shell">
     <div class="arena-head">
-      <div><h2>🔥 WohnzimmerSwipe</h2><p>Zieh die Karte nach links zum Überspringen oder nach rechts für ein Like. Deine Likes bestimmen die Top-Liste.</p></div>
+      <div><h2>🔥 WohnzimmerSwipe</h2><p>Zieh nach links für Weiter oder nach rechts für Like. Der Feed endet nie: alle Layouts kommen später wieder, sodass du deine Stimme jederzeit ändern kannst.</p></div>
       <button id="resetSwipeBtn">↻ Pool neu laden</button>
     </div>
     <div id="swipeDeck"></div>
@@ -1288,7 +1288,7 @@
 <section class="game-screen" id="leaderView">
   <div class="arena">
     <div class="arena-head">
-      <div><h2>🏆 Lieblingslayouts</h2><p>Ranking ausschließlich nach Community-Likes. Die automatische Bewertung bleibt davon getrennt. Spieler erhalten 100 Punkte pro veröffentlichtem Layout.</p></div>
+      <div><h2>🏆 Lieblingslayouts</h2><p>Ranking nach Community-Durchschnitt. Angezeigt wird die Like-Rate pro eindeutigem User; bei wenigen Stimmen wird sie statistisch leicht stabilisiert. Spieler erhalten 100 Punkte pro veröffentlichtem Layout.</p></div>
       <div class="score-badge">Top 3</div>
     </div>
     <div class="leader-grid" id="leaderboard"></div>
@@ -1658,6 +1658,13 @@ const db = getFirestore(firebaseApp);
     return pt.matrixTransform(svg.getScreenCTM().inverse());
   }
   function snap(v){ return snapBox.checked ? Math.round(v/5)*5 : v; }
+  function normalizeRotation90(value){
+    const r=Math.round((Number(value)||0)/90)*90;
+    return ((r%360)+360)%360;
+  }
+  function normalizeItemsTo90(list){
+    return (list||[]).map(item=>({...item,r:normalizeRotation90(item.r)}));
+  }
 
   function spawn(type){
     const used=items.filter(i=>i.type===type).length;
@@ -2639,6 +2646,11 @@ const db = getFirestore(firebaseApp);
 
   // ---------- Save / share / Firebase community layer ----------
   const SAVED_KEY='roomrush-saved-v1';
+
+  // 50 fixed, valid layouts generated offline against the same room geometry.
+  // Their IDs never change, therefore Firebase votes stay shared across clients.
+  const AI_LAYOUTS=[{"id":"ai-001","title":"KI · Open Lounge","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":245,"y":335,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":345,"y":215,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":125,"y":110,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":195,"y":250,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":470,"y":305,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":120,"y":230,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":415,"y":310,"r":0,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":275,"y":415,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":80,"y":210,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":205,"y":185,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":245,"y":335,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000001,"autoScore":95,"autoReview":null,"isAI":true},{"id":"ai-002","title":"KI · Work & Chill","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":290,"y":315,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":115,"y":290,"r":270,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":180,"y":70,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":270,"y":215,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":120,"y":430,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":65,"y":85,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":210,"y":400,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":350,"y":245,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":255,"y":370,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":300,"y":165,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":360,"y":315,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000002,"autoScore":95,"autoReview":null,"isAI":true},{"id":"ai-003","title":"KI · Window Flow","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":195,"y":265,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":340,"y":290,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":155,"y":60,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":100,"y":220,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":360,"y":150,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":95,"y":160,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":355,"y":205,"r":0,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":310,"y":205,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":465,"y":360,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":435,"y":400,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":195,"y":195,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000003,"autoScore":95,"autoReview":null,"isAI":true},{"id":"ai-004","title":"KI · Corner Studio","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":150,"y":350,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":350,"y":160,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":115,"y":230,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":100,"y":415,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":120,"y":130,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":440,"y":220,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":190,"y":65,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":230,"y":290,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":370,"y":270,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":130,"y":65,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":80,"y":350,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000004,"autoScore":95,"autoReview":null,"isAI":true},{"id":"ai-005","title":"KI · Soft Divide","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":135,"y":245,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":135,"y":50,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":330,"y":185,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":195,"y":275,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":420,"y":315,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":410,"y":265,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":60,"y":245,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":465,"y":380,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":195,"y":110,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":190,"y":190,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":135,"y":245,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000005,"autoScore":95,"autoReview":null,"isAI":true},{"id":"ai-006","title":"KI · Media Focus","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":110,"y":285,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":310,"y":235,"r":90,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":205,"y":105,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":170,"y":355,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":415,"y":225,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":110,"y":40,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":410,"y":165,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":475,"y":175,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":400,"y":305,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":185,"y":240,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":115,"y":240,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000006,"autoScore":95,"autoReview":null,"isAI":true},{"id":"ai-007","title":"KI · Balanced Loft","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":215,"y":320,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":120,"y":125,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":360,"y":225,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":230,"y":230,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":465,"y":375,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":145,"y":210,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":170,"y":370,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":155,"y":260,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":345,"y":150,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":380,"y":125,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":280,"y":130,"r":270,"mirrored":false,"foldedOut":false}],"createdAt":1700000000007,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-008","title":"KI · Coffee Circuit","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":145,"y":145,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":415,"y":215,"r":90,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":205,"y":360,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":135,"y":30,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":325,"y":175,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":435,"y":370,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":255,"y":240,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":300,"y":120,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":295,"y":240,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":100,"y":295,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":145,"y":145,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000008,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-009","title":"KI · Quiet Workzone","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":165,"y":255,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":300,"y":210,"r":270,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":165,"y":60,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":60,"y":295,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":385,"y":200,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":215,"y":245,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":470,"y":205,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":440,"y":245,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":210,"y":175,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":430,"y":310,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":160,"y":195,"r":270,"mirrored":false,"foldedOut":false}],"createdAt":1700000000009,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-010","title":"KI · Social Angle","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":300,"y":235,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":135,"y":330,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":115,"y":95,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":325,"y":310,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":60,"y":400,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":195,"y":65,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":415,"y":315,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":130,"y":430,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":275,"y":365,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":230,"y":40,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":325,"y":145,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000010,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-011","title":"KI · Desk & Lounge","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":180,"y":305,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":235,"y":220,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":435,"y":220,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":245,"y":395,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":170,"y":145,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":445,"y":340,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":85,"y":355,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":100,"y":245,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":480,"y":390,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":360,"y":325,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":110,"y":315,"r":270,"mirrored":false,"foldedOut":false}],"createdAt":1700000000011,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-012","title":"KI · Two-Zone Flow","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":210,"y":170,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":295,"y":305,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":185,"y":60,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":155,"y":260,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":385,"y":235,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":380,"y":165,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":460,"y":270,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":440,"y":185,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":155,"y":415,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":210,"y":365,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":210,"y":170,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000012,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-013","title":"KI · Open Center","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":195,"y":200,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":120,"y":310,"r":90,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":390,"y":245,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":125,"y":150,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":265,"y":245,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":25,"y":300,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":325,"y":330,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":245,"y":145,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":390,"y":335,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":210,"y":440,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":195,"y":240,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000013,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-014","title":"KI · Night Lounge","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":235,"y":160,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":155,"y":320,"r":90,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":365,"y":265,"r":270,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":325,"y":135,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":460,"y":265,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":70,"y":305,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":465,"y":180,"r":0,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":455,"y":125,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":260,"y":370,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":235,"y":405,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":235,"y":230,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000014,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-015","title":"KI · Reading Corner","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":210,"y":325,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":125,"y":130,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":430,"y":235,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":280,"y":255,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":280,"y":135,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":460,"y":360,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":230,"y":45,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":290,"y":205,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":325,"y":265,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":105,"y":220,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":210,"y":255,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000015,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-016","title":"KI · Compact Studio","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":295,"y":130,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":195,"y":290,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":385,"y":255,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":235,"y":30,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":225,"y":375,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":140,"y":205,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":175,"y":415,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":230,"y":180,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":175,"y":380,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":305,"y":210,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":335,"y":130,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000016,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-017","title":"KI · Long Desk Life","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":165,"y":135,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":270,"y":285,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":160,"y":400,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":100,"y":60,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":420,"y":205,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":280,"y":185,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":80,"y":185,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":320,"y":120,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":140,"y":265,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":280,"y":420,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":205,"y":135,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000017,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-018","title":"KI · Soft Geometry","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":265,"y":290,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":170,"y":150,"r":90,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":360,"y":170,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":160,"y":350,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":455,"y":280,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":40,"y":140,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":445,"y":355,"r":0,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":300,"y":345,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":235,"y":145,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":265,"y":50,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":195,"y":290,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000018,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-019","title":"KI · Window Seat","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":130,"y":245,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":245,"y":295,"r":270,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":435,"y":260,"r":270,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":70,"y":190,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":150,"y":410,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":315,"y":335,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":75,"y":385,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":240,"y":435,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":330,"y":150,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":200,"y":125,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":130,"y":175,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000019,"autoScore":94,"autoReview":null,"isAI":true},{"id":"ai-020","title":"KI · Clean Route","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":165,"y":145,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":215,"y":345,"r":270,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":385,"y":250,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":75,"y":230,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":185,"y":30,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":140,"y":305,"r":270,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":125,"y":95,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":250,"y":50,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":480,"y":245,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":270,"y":425,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":95,"y":145,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000020,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-021","title":"KI · Game Night","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":145,"y":140,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":230,"y":255,"r":0,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":430,"y":270,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":190,"y":45,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":405,"y":140,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":215,"y":190,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":300,"y":135,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":170,"y":195,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":345,"y":170,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":115,"y":310,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":185,"y":140,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000021,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-022","title":"KI · Cozy Split","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":200,"y":160,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":205,"y":285,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":425,"y":250,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":195,"y":45,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":245,"y":380,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":345,"y":240,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":260,"y":445,"r":0,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":340,"y":330,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":265,"y":210,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":115,"y":415,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":180,"y":215,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000022,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-023","title":"KI · Studio Arc","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":320,"y":295,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":315,"y":160,"r":0,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":110,"y":110,"r":270,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":265,"y":360,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":105,"y":250,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":260,"y":90,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":40,"y":235,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":230,"y":240,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":215,"y":80,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":335,"y":245,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":360,"y":295,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000023,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-024","title":"KI · Airy Lounge","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":185,"y":175,"r":270,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":365,"y":265,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":175,"y":385,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":105,"y":170,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":445,"y":130,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":95,"y":270,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":460,"y":195,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":120,"y":90,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":115,"y":235,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":415,"y":325,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":185,"y":135,"r":270,"mirrored":false,"foldedOut":false}],"createdAt":1700000000024,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-025","title":"KI · Workstation Plus","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":245,"y":300,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":245,"y":145,"r":0,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":170,"y":395,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":240,"y":215,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":400,"y":145,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":55,"y":395,"r":270,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":190,"y":220,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":470,"y":210,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":215,"y":70,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":430,"y":360,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":205,"y":300,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000025,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-026","title":"KI · Conversation Zone","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":210,"y":335,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":200,"y":145,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":370,"y":245,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":115,"y":275,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":140,"y":215,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":235,"y":265,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":30,"y":215,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":195,"y":280,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":235,"y":65,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":395,"y":115,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":280,"y":335,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000026,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-027","title":"KI · Open Passage","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":450,"y":280,"r":270,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":110,"y":285,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":185,"y":70,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":375,"y":335,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":280,"y":190,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":120,"y":430,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":310,"y":315,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":305,"y":130,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":185,"y":360,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":155,"y":350,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":450,"y":210,"r":270,"mirrored":false,"foldedOut":false}],"createdAt":1700000000027,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-028","title":"KI · Desk First","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":195,"y":260,"r":270,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":385,"y":210,"r":90,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":165,"y":60,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":130,"y":210,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":300,"y":260,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":450,"y":195,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":130,"y":275,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":310,"y":315,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":280,"y":215,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":450,"y":300,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":195,"y":300,"r":270,"mirrored":false,"foldedOut":false}],"createdAt":1700000000028,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-029","title":"KI · Lounge First","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":260,"y":140,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":155,"y":270,"r":0,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":330,"y":270,"r":270,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":150,"y":200,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":125,"y":415,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":155,"y":340,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":60,"y":390,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":210,"y":435,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":435,"y":160,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":90,"y":170,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":190,"y":140,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000029,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-030","title":"KI · Balanced Corners","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":445,"y":325,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":280,"y":220,"r":270,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":140,"y":210,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":365,"y":325,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":160,"y":350,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":35,"y":130,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":85,"y":330,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":265,"y":405,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":80,"y":135,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":110,"y":100,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":445,"y":255,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000030,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-031","title":"KI · Soft Corridor","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":145,"y":155,"r":270,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":330,"y":235,"r":270,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":140,"y":350,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":55,"y":160,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":240,"y":235,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":265,"y":140,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":455,"y":315,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":265,"y":300,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":80,"y":255,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":440,"y":245,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":145,"y":155,"r":270,"mirrored":false,"foldedOut":false}],"createdAt":1700000000031,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-032","title":"KI · Media & Work","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":140,"y":385,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":340,"y":195,"r":0,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":120,"y":240,"r":270,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":245,"y":315,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":315,"y":300,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":180,"y":80,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":125,"y":445,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":380,"y":335,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":360,"y":115,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":80,"y":130,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":210,"y":385,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000032,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-033","title":"KI · Window Rhythm","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":210,"y":180,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":430,"y":255,"r":90,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":120,"y":110,"r":270,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":310,"y":235,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":260,"y":400,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":360,"y":260,"r":270,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":190,"y":425,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":285,"y":185,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":100,"y":280,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":350,"y":180,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":210,"y":180,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000033,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-034","title":"KI · Relax Route","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":210,"y":130,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":130,"y":310,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":425,"y":240,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":315,"y":200,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":325,"y":305,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":135,"y":425,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":275,"y":345,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":215,"y":185,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":80,"y":370,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":270,"y":205,"r":270,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":160,"y":190,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000034,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-035","title":"KI · Coffee Point","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":255,"y":175,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":185,"y":405,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":130,"y":75,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":190,"y":240,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":90,"y":335,"r":180,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":30,"y":165,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":280,"y":125,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":85,"y":220,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":265,"y":80,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":155,"y":300,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":255,"y":175,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000035,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-036","title":"KI · Light Lines","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":175,"y":295,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":160,"y":145,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":430,"y":250,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":270,"y":230,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":100,"y":220,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":320,"y":160,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":35,"y":225,"r":0,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":140,"y":370,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":335,"y":260,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":220,"y":350,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":105,"y":295,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000036,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-037","title":"KI · Open Floor","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":135,"y":305,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":205,"y":235,"r":270,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":400,"y":225,"r":270,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":230,"y":375,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":190,"y":95,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":470,"y":345,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":110,"y":130,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":35,"y":260,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":295,"y":250,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":320,"y":220,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":135,"y":305,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000037,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-038","title":"KI · Calm Office","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":320,"y":160,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":240,"y":320,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":175,"y":70,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":285,"y":220,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":35,"y":50,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":255,"y":385,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":330,"y":260,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":370,"y":230,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":225,"y":215,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":195,"y":245,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":250,"y":160,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000038,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-039","title":"KI · Social Studio","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":460,"y":325,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":245,"y":275,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":175,"y":65,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":390,"y":290,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":105,"y":290,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":200,"y":150,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":265,"y":335,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":80,"y":375,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":370,"y":245,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":320,"y":345,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":460,"y":255,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000039,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-040","title":"KI · Corner Flow","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":190,"y":255,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":455,"y":300,"r":90,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":125,"y":355,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":250,"y":170,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":310,"y":325,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":360,"y":145,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":380,"y":310,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":245,"y":310,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":245,"y":355,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":405,"y":175,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":145,"y":270,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000040,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-041","title":"KI · Room Circuit","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":195,"y":205,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":135,"y":330,"r":0,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":405,"y":245,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":120,"y":125,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":210,"y":70,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":165,"y":265,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":95,"y":55,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":195,"y":130,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":325,"y":135,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":260,"y":135,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":235,"y":205,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000041,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-042","title":"KI · Daily Driver","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":170,"y":310,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":365,"y":295,"r":180,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":165,"y":65,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":95,"y":350,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":350,"y":170,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":80,"y":180,"r":270,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":255,"y":220,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":120,"y":280,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":200,"y":150,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":235,"y":265,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":170,"y":270,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000042,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-043","title":"KI · Chill Grid","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":265,"y":240,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":130,"y":110,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":200,"y":390,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":300,"y":175,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":450,"y":405,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":225,"y":175,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":475,"y":340,"r":90,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":425,"y":305,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":225,"y":290,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":380,"y":160,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":195,"y":240,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000043,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-044","title":"KI · Desk Route","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":235,"y":160,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":145,"y":305,"r":90,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":355,"y":300,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":180,"y":70,"r":90,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":425,"y":210,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":230,"y":345,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":320,"y":210,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":440,"y":150,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":260,"y":45,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":245,"y":280,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":280,"y":150,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000044,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-045","title":"KI · Lounge Route","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":210,"y":160,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":250,"y":230,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":185,"y":400,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":170,"y":85,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":470,"y":320,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":250,"y":300,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":410,"y":255,"r":0,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":245,"y":85,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":315,"y":305,"r":0,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":475,"y":215,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":210,"y":160,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000045,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-046","title":"KI · Flexible Living","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":445,"y":290,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":220,"y":265,"r":90,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":120,"y":170,"r":90,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":330,"y":235,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":250,"y":110,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":350,"y":310,"r":90,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":305,"y":155,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":285,"y":200,"r":270,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":115,"y":50,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":190,"y":35,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":445,"y":220,"r":90,"mirrored":false,"foldedOut":false}],"createdAt":1700000000046,"autoScore":93,"autoReview":null,"isAI":true},{"id":"ai-047","title":"KI · Clear Passage","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":225,"y":205,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":120,"y":95,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":160,"y":345,"r":0,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":270,"y":145,"r":0,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":300,"y":295,"r":0,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":105,"y":25,"r":270,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":200,"y":265,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":390,"y":300,"r":0,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":445,"y":370,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":160,"y":445,"r":90,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":265,"y":205,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000047,"autoScore":92,"autoReview":null,"isAI":true},{"id":"ai-048","title":"KI · Soft Center","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":295,"y":330,"r":180,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":230,"y":140,"r":0,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":355,"y":240,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":205,"y":430,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":175,"y":45,"r":90,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":250,"y":60,"r":0,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":105,"y":80,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":65,"y":55,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":180,"y":275,"r":270,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":270,"y":390,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":225,"y":330,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000048,"autoScore":92,"autoReview":null,"isAI":true},{"id":"ai-049","title":"KI · Window Lounge","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":305,"y":160,"r":0,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":115,"y":160,"r":90,"mirrored":false,"foldedOut":false},{"id":3,"type":"sofabed","x":385,"y":285,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":205,"y":80,"r":180,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":225,"y":285,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":440,"y":425,"r":180,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":170,"y":300,"r":180,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":115,"y":310,"r":180,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":180,"y":230,"r":90,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":445,"y":370,"r":0,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":375,"y":160,"r":0,"mirrored":false,"foldedOut":false}],"createdAt":1700000000049,"autoScore":92,"autoReview":null,"isAI":true},{"id":"ai-050","title":"KI · Final Mix","author":"KI · WohnzimmerTinder","ownerId":"__AI__","items":[{"id":1,"type":"desk270","x":165,"y":260,"r":90,"mirrored":false,"foldedOut":false},{"id":2,"type":"lsofa","x":320,"y":260,"r":180,"mirrored":true,"foldedOut":false},{"id":3,"type":"sofabed","x":150,"y":60,"r":180,"mirrored":false,"foldedOut":false},{"id":4,"type":"office","x":90,"y":170,"r":270,"mirrored":false,"foldedOut":false},{"id":5,"type":"table90","x":420,"y":165,"r":270,"mirrored":false,"foldedOut":false},{"id":6,"type":"rolltable","x":270,"y":125,"r":270,"mirrored":false,"foldedOut":false},{"id":7,"type":"chair","x":330,"y":150,"r":270,"mirrored":false,"foldedOut":false},{"id":8,"type":"chair","x":430,"y":350,"r":90,"mirrored":false,"foldedOut":false},{"id":9,"type":"floorlamp","x":470,"y":210,"r":180,"mirrored":false,"foldedOut":false},{"id":10,"type":"floorlamp","x":255,"y":335,"r":180,"mirrored":false,"foldedOut":false},{"id":11,"type":"jibomat","x":90,"y":300,"r":180,"mirrored":false,"foldedOut":false}],"createdAt":1700000000050,"autoScore":92,"autoReview":null,"isAI":true}];
+
   let swipeQueue=[];
   let activeSwipe=null;
   let swipeDrag=null;
@@ -2655,6 +2667,7 @@ const db = getFirestore(firebaseApp);
 
   function shortFirebaseId(ownerId){
     const id=String(ownerId||'');
+    if(id==='__AI__') return 'KI';
     if(!id) return '------';
     return id.slice(0,6).toUpperCase();
   }
@@ -2667,7 +2680,7 @@ const db = getFirestore(firebaseApp);
     const counts=new Map();
 
     for(const layout of communityCache){
-      if(!layout.ownerId) continue;
+      if(!layout.ownerId || layout.isAI || layout.ownerId==='__AI__') continue;
       counts.set(layout.ownerId,(counts.get(layout.ownerId)||0)+1);
     }
 
@@ -2677,6 +2690,37 @@ const db = getFirestore(firebaseApp);
         count*POINTS_PER_PUBLISHED_LAYOUT
       ])
     );
+  }
+
+  function applyVoteStats(entry,likes,totalVotes){
+    const total=Math.max(0,Number(totalVotes)||0);
+    const likeCount=Math.max(0,Number(likes)||0);
+    const approvalRate=total>0 ? likeCount/total : 0.5;
+
+    // Bayesian average: 50% prior with four virtual votes.
+    // This prevents a single 1/1 vote from immediately becoming #1.
+    const ratingScore=(likeCount+2)/(total+4);
+
+    return {
+      ...entry,
+      score:likeCount,
+      voteCount:total,
+      approvalRate,
+      ratingScore
+    };
+  }
+
+  function compareLayouts(a,b){
+    return (b.ratingScore??0.5)-(a.ratingScore??0.5)
+      || (b.voteCount||0)-(a.voteCount||0)
+      || (b.score||0)-(a.score||0)
+      || (b.createdAt||0)-(a.createdAt||0);
+  }
+
+  function approvalText(entry){
+    const votes=entry.voteCount||0;
+    if(!votes) return 'Ø noch keine Stimmen';
+    return `Ø ${Math.round((entry.approvalRate||0)*100)}% · ${votes} Stimme${votes===1?'':'n'}`;
   }
 
   function uid(){
@@ -2720,29 +2764,35 @@ const db = getFirestore(firebaseApp);
       ]);
 
       const voteCounts=new Map();
+      const voteTotals=new Map();
       const mine=new Set();
       const myVotes=new Map();
 
       voteSnap.forEach(snap=>{
         const v=snap.data()||{};
+        const value=Number(v.value);
 
         if(v.userId===firebaseUser.uid && v.layoutId){
           mine.add(v.layoutId);
-          myVotes.set(v.layoutId,Number(v.value)===1?1:0);
+          myVotes.set(v.layoutId,value===1?1:0);
         }
 
-        if(v.value===1 && v.layoutId){
+        if(v.layoutId && (value===0 || value===1)){
+          voteTotals.set(v.layoutId,(voteTotals.get(v.layoutId)||0)+1);
+        }
+
+        if(value===1 && v.layoutId){
           voteCounts.set(v.layoutId,(voteCounts.get(v.layoutId)||0)+1);
         }
       });
 
-      communityCache=layoutSnap.docs.map(snap=>{
+      const firebaseLayouts=layoutSnap.docs.map(snap=>{
         const d=snap.data()||{};
         const createdAt=d.createdAt && typeof d.createdAt.toMillis==='function'
           ? d.createdAt.toMillis()
           : Number(d.createdAt)||0;
 
-        return {
+        return applyVoteStats({
           id:snap.id,
           title:String(d.title||'Untitled Layout').slice(0,40),
           author:String(d.author||'Gast').slice(0,40),
@@ -2751,9 +2801,17 @@ const db = getFirestore(firebaseApp);
           createdAt,
           autoScore:Number.isFinite(d.autoScore)?d.autoScore:null,
           autoReview:(d.autoReview && typeof d.autoReview==='object')?d.autoReview:null,
-          score:voteCounts.get(snap.id)||0
-        };
+          isAI:false
+        },voteCounts.get(snap.id)||0,voteTotals.get(snap.id)||0);
       });
+
+      const aiLayouts=AI_LAYOUTS.map(seed=>applyVoteStats(
+        seed,
+        voteCounts.get(seed.id)||0,
+        voteTotals.get(seed.id)||0
+      ));
+
+      communityCache=[...firebaseLayouts,...aiLayouts];
 
       votedLayoutIds=mine;
       myVotesByLayoutId=myVotes;
@@ -2875,7 +2933,7 @@ const db = getFirestore(firebaseApp);
   function layoutAutoReview(layoutItems){
     const m=layoutMetrics(layoutItems);
     const top=[...communityCache]
-      .sort((a,b)=>(b.score||0)-(a.score||0) || (b.createdAt||0)-(a.createdAt||0))
+      .sort(compareLayouts)
       .slice(0,5);
     const benchmark=top.map(x=>layoutMetrics(x.items||[]));
     const n=benchmark.length;
@@ -3286,7 +3344,7 @@ const db = getFirestore(firebaseApp);
   function loadSavedLayout(){
     const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
     const entry=getJSON(SAVED_KEY,[]).find(x=>x.id===id);if(!entry)return;
-    items=cloneItems(entry.items);nextId=Math.max(1,...items.map(x=>Number(x.id)||0))+1;selectedId=null;layoutNameEl.value=entry.title;save();renderAll();toast('Saved layout loaded');
+    items=normalizeItemsTo90(cloneItems(entry.items));nextId=Math.max(1,...items.map(x=>Number(x.id)||0))+1;selectedId=null;layoutNameEl.value=entry.title;save();renderAll();toast('Saved layout loaded');
   }
   function deleteSavedLayout(){
     const id=document.getElementById('savedLayoutsSelect').value;if(!id){toast('Wähle zuerst ein gespeichertes Layout');return;}
@@ -3326,7 +3384,7 @@ const db = getFirestore(firebaseApp);
   }
   function importShared(text){
     const data=decodeLayout(extractCode(text));
-    items=data.items.map((i,idx)=>({...i,id:idx+1}));
+    items=normalizeItemsTo90(data.items.map((i,idx)=>({...i,id:idx+1})));
     nextId=items.length+1;selectedId=null;
     if(data.title) layoutNameEl.value=data.title;
     save();renderAll();setView('layout');
@@ -3422,10 +3480,19 @@ const db = getFirestore(firebaseApp);
     svgEl.innerHTML=out;
   }
 
+  function shuffleLayouts(list){
+    const a=[...list];
+    for(let i=a.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
   function resetSwipeQueue(){
-    swipeQueue=communityCache
-      .filter(x=>x.ownerId!==firebaseUser?.uid && !votedLayoutIds.has(x.id))
-      .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    swipeQueue=shuffleLayouts(
+      communityCache.filter(x=>x.isAI || x.ownerId!==firebaseUser?.uid)
+    );
     activeSwipe=null;
     renderSwipeCard();
   }
@@ -3433,15 +3500,15 @@ const db = getFirestore(firebaseApp);
     const deck=document.getElementById('swipeDeck');
     document.getElementById('swipeActions').style.display='flex';
     if(!swipeQueue.length){
-      activeSwipe=null;deck.innerHTML='<div class="empty-deck"><div class="emoji">🏁</div><strong>Runde geschafft</strong><div style="margin-top:5px">Du hast alle verfügbaren Layouts bewertet.</div></div>';
+      activeSwipe=null;deck.innerHTML='<div class="empty-deck"><div class="emoji">📦</div><strong>Noch keine Layouts</strong><div style="margin-top:5px">Sobald Layouts verfügbar sind, startet der endlose Swipe-Feed.</div></div>';
       document.getElementById('swipeActions').style.display='none';return;
     }
     activeSwipe=swipeQueue[0];
     deck.innerHTML=`<div class="swipe-card" id="swipeCard">
       <div class="swipe-stamp stamp-like" id="likeStamp">LIKE</div><div class="swipe-stamp stamp-pass" id="passStamp">PASS</div>
-      <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')}</div></div><div class="score-badge">♥ ${activeSwipe.score||0} Likes</div></div>
+      <div class="swipe-meta"><div><h3>${escapeHTML(activeSwipe.title)}</h3><div class="small">von ${escapeHTML(activeSwipe.author||'Gast')}</div></div><div class="score-badge">${approvalText(activeSwipe)}</div></div>
       <div class="preview-wrap"><svg class="preview-svg" id="swipePreview"></svg></div>
-      <div class="swipe-footer">${activeSwipe.items.length} Items${Number.isFinite(activeSwipe.autoScore)?` · ✨ Auto ${activeSwipe.autoScore}/100`:''} · Ranking nur nach Likes</div>
+      <div class="swipe-footer">${activeSwipe.items.length} Items · ♥ ${activeSwipe.score||0} Likes${Number.isFinite(activeSwipe.autoScore)?` · ✨ Auto ${activeSwipe.autoScore}/100`:''} · Layouts wiederholen sich automatisch</div>
     </div>`;
     renderStaticPreview(document.getElementById('swipePreview'),activeSwipe.items);
     attachSwipeGesture();
@@ -3472,7 +3539,7 @@ const db = getFirestore(firebaseApp);
     const layout=communityCache.find(x=>x.id===layoutId);
     if(!layout) return false;
 
-    if(layout.ownerId===firebaseUser.uid){
+    if(!layout.isAI && layout.ownerId===firebaseUser.uid){
       toast('Das ist dein eigenes Layout');
       return false;
     }
@@ -3487,18 +3554,25 @@ const db = getFirestore(firebaseApp);
     }
 
     // Optimistic ranking update.
-    if(previousValue===1 && nextValue===0){
+    if(!hadVote){
+      layout.voteCount=(layout.voteCount||0)+1;
+      if(nextValue===1) layout.score=(layout.score||0)+1;
+    }else if(previousValue===1 && nextValue===0){
       layout.score=Math.max(0,(layout.score||0)-1);
-    }else if(previousValue!==1 && nextValue===1){
+    }else if(previousValue===0 && nextValue===1){
       layout.score=(layout.score||0)+1;
     }
+
+    layout.approvalRate=(layout.voteCount||0)>0
+      ? (layout.score||0)/(layout.voteCount||1)
+      : 0.5;
+    layout.ratingScore=((layout.score||0)+2)/((layout.voteCount||0)+4);
 
     votedLayoutIds.add(layoutId);
     myVotesByLayoutId.set(layoutId,nextValue);
 
     updateHUD();
     renderLeaderboard();
-    resetSwipeQueue();
 
     try{
       const voteId=`${firebaseUser.uid}_${layoutId}`;
@@ -3528,8 +3602,13 @@ const db = getFirestore(firebaseApp);
     const card=document.getElementById('swipeCard');
     if(card) card.classList.add(like?'swipe-right':'swipe-left');
 
-    swipeQueue.shift();
-    setTimeout(renderSwipeCard,180);
+    setTimeout(()=>{
+      if(swipeQueue.length){
+        const first=swipeQueue.shift();
+        if(first) swipeQueue.push(first);
+      }
+      renderSwipeCard();
+    },180);
 
     await saveVote(voting.id,like?1:0,{animateSwipe:true});
   }
@@ -3750,7 +3829,7 @@ const db = getFirestore(firebaseApp);
   function voteControlsHTML(entry){
     if(!firebaseUser) return '';
 
-    if(entry.ownerId===firebaseUser.uid){
+    if(!entry.isAI && entry.ownerId===firebaseUser.uid){
       return `<div class="vote-edit"><button class="vote-own" disabled>Dein Layout</button></div>`;
     }
 
@@ -3792,7 +3871,7 @@ const db = getFirestore(firebaseApp);
     }
 
     const ranked=[...communityCache]
-      .sort((a,b)=>(b.score||0)-(a.score||0)||(b.createdAt||0)-(a.createdAt||0))
+      .sort(compareLayouts)
       .slice(0,50);
 
     const top3=ranked.slice(0,3);
@@ -3813,8 +3892,8 @@ const db = getFirestore(firebaseApp);
         <div class="leader-info">
           <div class="leader-name">${escapeHTML(entry.title)}</div>
           <div class="leader-score">
-            ♥ ${entry.score||0} Likes · ${escapeHTML(entry.author||'Gast')}
-            <br>🆔 ${firebaseId} · ⭐ ${playerPoints} Punkte
+            ${approvalText(entry)} · ♥ ${entry.score||0}
+            <br>🆔 ${firebaseId}${entry.isAI?' · 🤖 KI':` · ⭐ ${playerPoints} Punkte`}
             ${Number.isFinite(entry.autoScore)?`<br>✨ Auto ${entry.autoScore}/100 <span style="font-size:10px">(ohne Ranking-Einfluss)</span>`:''}
           </div>
           ${voteControlsHTML(entry)}
@@ -3857,8 +3936,8 @@ const db = getFirestore(firebaseApp);
         <div class="leader-mini-info">
           <div class="leader-mini-title">${escapeHTML(entry.title)}</div>
           <div class="leader-mini-meta">
-            ♥ ${entry.score||0} · ${escapeHTML(entry.author||'Gast')}
-            <br>🆔 ${firebaseId} · ⭐ ${playerPoints}
+            ${approvalText(entry)} · ♥ ${entry.score||0}
+            <br>🆔 ${firebaseId}${entry.isAI?' · 🤖 KI':` · ⭐ ${playerPoints}`}
           </div>
           ${voteControlsHTML(entry)}
         </div>`;
@@ -3947,13 +4026,13 @@ const db = getFirestore(firebaseApp);
   function load(){
     try{
       const d=JSON.parse(localStorage.getItem('raumplaner-moebel-v2'));
-      if(d && Array.isArray(d.items)){items=d.items;nextId=d.nextId||1;}
+      if(d && Array.isArray(d.items)){items=normalizeItemsTo90(d.items);nextId=d.nextId||1;}
     }catch(_){}
   }
 
 
-  document.getElementById('rotL').onclick=()=>{const i=itemById(selectedId);if(i){i.r-=15;save();renderAll();}};
-  document.getElementById('rotR').onclick=()=>{const i=itemById(selectedId);if(i){i.r+=15;save();renderAll();}};
+  document.getElementById('rotL').onclick=()=>{const i=itemById(selectedId);if(i){i.r=normalizeRotation90(i.r-90);save();renderAll();}};
+  document.getElementById('rotR').onclick=()=>{const i=itemById(selectedId);if(i){i.r=normalizeRotation90(i.r+90);save();renderAll();}};
   document.getElementById('mirrorBtn').onclick=()=>{const i=itemById(selectedId);if(i){i.mirrored=!i.mirrored;save();renderAll();}};
   document.getElementById('foldBtn').onclick=()=>{const i=itemById(selectedId);if(i){i.foldedOut=!i.foldedOut;save();renderAll();}};
   document.getElementById('removeBtn').onclick=()=>{if(selectedId!=null){items=items.filter(i=>i.id!==selectedId);selectedId=null;save();renderAll();}};
@@ -3977,8 +4056,8 @@ const db = getFirestore(firebaseApp);
 
   window.addEventListener('keydown',e=>{
     const i=itemById(selectedId);if(!i)return;
-    if(e.key.toLowerCase()==='q'){i.r-=15;save();renderAll();}
-    if(e.key.toLowerCase()==='e'){i.r+=15;save();renderAll();}
+    if(e.key.toLowerCase()==='q'){i.r=normalizeRotation90(i.r-90);save();renderAll();}
+    if(e.key.toLowerCase()==='e'){i.r=normalizeRotation90(i.r+90);save();renderAll();}
   });
 
   document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));

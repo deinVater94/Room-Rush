@@ -49,7 +49,10 @@ service cloud.firestore {
         && voteId == request.auth.uid + '_' + request.resource.data.layoutId
         && (request.resource.data.value == 0 || request.resource.data.value == 1)
         && request.resource.data.createdAt == request.time
-        && exists(/databases/$(database)/documents/layouts/$(request.resource.data.layoutId));
+        && (
+          request.resource.data.layoutId.matches('^ai-0(0[1-9]|[1-4][0-9]|50)$')
+          || exists(/databases/$(database)/documents/layouts/$(request.resource.data.layoutId))
+        );
 
       // The same user may change only their own vote value.
       // userId/layoutId stay immutable and the deterministic doc id stays the same.
@@ -63,7 +66,10 @@ service cloud.firestore {
         && voteId == request.auth.uid + '_' + resource.data.layoutId
         && (request.resource.data.value == 0 || request.resource.data.value == 1)
         && request.resource.data.createdAt == request.time
-        && exists(/databases/$(database)/documents/layouts/$(resource.data.layoutId));
+        && (
+          resource.data.layoutId.matches('^ai-0(0[1-9]|[1-4][0-9]|50)$')
+          || exists(/databases/$(database)/documents/layouts/$(resource.data.layoutId))
+        );
 
       allow delete: if false;
     }
